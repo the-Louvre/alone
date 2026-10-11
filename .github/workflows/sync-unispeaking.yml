@@ -21,7 +21,7 @@ jobs:
           git clone --depth 1 https://github.com/1024XEngineer/UniSpeaking.git /tmp/unispeaking-source
           mkdir -p /tmp/unispeaking-overrides
           cp -a .codex-overrides/. /tmp/unispeaking-overrides/
-          rsync -a --delete --exclude='.git' /tmp/unispeaking-source/ ./
+          rsync -a --delete --exclude='.git' --exclude='.github/workflows/' /tmp/unispeaking-source/ ./
           cp -a /tmp/unispeaking-overrides/. ./
           rm -rf .codex-overrides
           git config user.name "github-actions[bot]"
