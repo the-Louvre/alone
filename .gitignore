@@ -1,0 +1,69 @@
+HELP.md
+target/
+backend/*/target/
+.mvn/wrapper/maven-wrapper.jar
+backend/*/.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### Go ###
+bin/
+coverage.out
+*.test
+
+### Frontend ###
+node_modules/
+dist/
+.vite/
+*.apk
+
+### Env ###
+.env
+*.local
+!deploy/env/.env.example
+
+### Local CD verification ###
+.local-cd-verify/
+
+### Runtime logs ###
+logs/
+data/
+runtime-logs/
+.source-deploy-state
+
+### Architecture design working files (not committed) ###
+docs/arch-design/
+
+### Local editor (Obsidian) ###
+.obsidian/
+
+### VS Code ###
+.vscode/
+
+### macOS ###
+.DS_Store

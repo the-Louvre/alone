@@ -1,0 +1,37 @@
+flags:
+  backend:
+    paths:
+      - backend/**
+    carryforward: true
+
+  mobile:
+    paths:
+      - frontend/mobile/src/**
+    carryforward: true
+
+  web:
+    paths:
+      - frontend/web/src/**
+    carryforward: true
+
+coverage:
+  status:
+    project:
+      default: off
+      backend:
+        target: 90%
+        threshold: 0%
+        flags:
+          - backend
+      mobile:
+        target: 85%
+        threshold: 0%
+        flags:
+          - mobile
+      web:
+        target: 85%
+        threshold: 0%
+        flags:
+          - web
+    patch:
+      default: off

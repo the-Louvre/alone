@@ -1,0 +1,121 @@
+import { SceneSpeechClient, TtsPlayer } from '../TtsPlayer';
+
+function wavResponse(bytes: number[], status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: () => 'audio/wav' },
+    arrayBuffer: jest.fn(async () => new Uint8Array(bytes).buffer),
+    json: jest.fn(async () => ({ message: 'TTS 生成失败' })),
+  } as unknown as Response;
+}
+
+describe('SceneSpeechClient', () => {
+  it('downloads authenticated backend WAV into a removable local asset', async () => {
+    const remove = jest.fn();
+    const writeWav = jest.fn(async () => ({
+      uri: 'file:///tts.wav',
+      remove,
+    }));
+    const fetchImpl = jest.fn(async () => wavResponse([82, 73, 70, 70]));
+    const client = new SceneSpeechClient({
+      baseUrl: 'http://127.0.0.1:8080/',
+      tokenStore: { get: async () => 'jwt-token' },
+      fetchImpl,
+      writeWav,
+    });
+
+    await expect(client.synthesize('scene/1', 'Hello.')).resolves.toEqual({
+      uri: 'file:///tts.wav',
+      remove,
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://127.0.0.1:8080/api/custom-scenes/scene%2F1/speech',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer jwt-token',
+        },
+        body: JSON.stringify({ text: 'Hello.', model: null }),
+      },
+    );
+    expect(writeWav).toHaveBeenCalledWith(
+      expect.objectContaining({ byteLength: 4 }),
+    );
+  });
+
+  it('surfaces JSON speech errors and does not send an auth header without a token', async () => {
+    const fetchImpl = jest.fn(async () => ({ ok: false, status: 422, headers: { get: () => 'application/json' }, json: async () => ({ message: '文本过长' }) } as unknown as Response));
+    const client = new SceneSpeechClient({ baseUrl: 'https://api.example.com', tokenStore: { get: async () => null }, fetchImpl });
+    await expect(client.synthesize('scene', 'hello')).rejects.toThrow('文本过长');
+    expect((fetchImpl as jest.Mock).mock.calls[0][1]).toEqual(expect.objectContaining({ headers: { 'Content-Type': 'application/json' } }));
+  });
+});
+
+describe('TtsPlayer', () => {
+  it('replaces and releases the previous player and cached WAV', async () => {
+    const firstAsset = { uri: 'file:///first.wav', remove: jest.fn() };
+    const secondAsset = { uri: 'file:///second.wav', remove: jest.fn() };
+    const speechClient = {
+      synthesize: jest
+        .fn()
+        .mockResolvedValueOnce(firstAsset)
+        .mockResolvedValueOnce(secondAsset),
+    };
+    const firstPlayer = { play: jest.fn(), pause: jest.fn(), remove: jest.fn(), volume: 0 };
+    const secondPlayer = { play: jest.fn(), pause: jest.fn(), remove: jest.fn(), volume: 0 };
+    const createPlayer = jest
+      .fn()
+      .mockReturnValueOnce(firstPlayer)
+      .mockReturnValueOnce(secondPlayer);
+    const preparePlayback = jest.fn(async () => undefined);
+    const player = new TtsPlayer({ speechClient, createPlayer, preparePlayback });
+
+    await player.play('scene-1', 'First');
+    await player.play('scene-1', 'Second');
+
+    expect(firstPlayer.pause).toHaveBeenCalledTimes(1);
+    expect(firstPlayer.remove).toHaveBeenCalledTimes(1);
+    expect(firstAsset.remove).toHaveBeenCalledTimes(1);
+    expect(secondPlayer.play).toHaveBeenCalledTimes(1);
+    expect(secondPlayer.volume).toBe(1);
+    expect(preparePlayback).toHaveBeenCalledTimes(2);
+    player.stop();
+    player.stop();
+    expect(secondPlayer.pause).toHaveBeenCalledTimes(1);
+    expect(secondPlayer.remove).toHaveBeenCalledTimes(1);
+    expect(secondAsset.remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('discards an earlier synthesis that resolves after playback is stopped', async () => {
+    let resolveAsset: (asset: { uri: string; remove: jest.Mock }) => void = () => undefined;
+    const asset = { uri: 'file:///late.wav', remove: jest.fn() };
+    const speechClient = {
+      synthesize: jest.fn(() => new Promise<typeof asset>((resolve) => {
+        resolveAsset = resolve;
+      })),
+    };
+    const nativePlayer = { play: jest.fn(), pause: jest.fn(), remove: jest.fn() };
+    const player = new TtsPlayer({
+      speechClient,
+      createPlayer: jest.fn(() => nativePlayer),
+      preparePlayback: jest.fn(async () => undefined),
+    });
+
+    const playPromise = player.play('scene-1', 'First');
+    player.stop();
+    resolveAsset(asset);
+    await playPromise;
+
+    expect(asset.remove).toHaveBeenCalledTimes(1);
+    expect(nativePlayer.play).not.toHaveBeenCalled();
+  });
+
+  it('releases the synthesized asset when playback preparation fails', async () => {
+    const asset = { uri: 'file:///bad.wav', remove: jest.fn() };
+    const player = new TtsPlayer({ speechClient: { synthesize: jest.fn().mockResolvedValue(asset) }, preparePlayback: jest.fn().mockRejectedValue(new Error('audio unavailable')), createPlayer: jest.fn() });
+    await expect(player.play('scene', 'hello')).rejects.toThrow('audio unavailable');
+    expect(asset.remove).toHaveBeenCalled();
+  });
+});

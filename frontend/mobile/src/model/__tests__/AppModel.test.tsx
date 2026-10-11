@@ -1,0 +1,335 @@
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Pressable, Text, View } from 'react-native';
+
+import type { AuthSessionState } from '@/features/auth/AuthSessionController';
+import type { UserPreference } from '@/features/auth/AuthService';
+import { teachers } from '@/theme/tokens';
+
+import { AppModelProvider, type AppModelAuthController, useAppModel } from '../AppModel';
+
+function createController(state: AuthSessionState): AppModelAuthController & {
+  emit(nextState: AuthSessionState): void;
+  login: jest.Mock;
+  updatePreference: jest.Mock;
+} {
+  let listener: ((nextState: AuthSessionState) => void) | null = null;
+  return {
+    getSnapshot: () => state,
+    subscribe: jest.fn((nextListener: (nextState: AuthSessionState) => void) => {
+      listener = nextListener;
+      return () => {
+        listener = null;
+      };
+    }),
+    bootstrap: jest.fn(async () => {
+      listener?.(state);
+    }),
+    login: jest.fn(async () => undefined),
+    issueEmailChallenge: jest.fn(async () => ({
+      challengeId: 'challenge-1',
+      expiresInSeconds: 600,
+      resendAfterSeconds: 60,
+    })),
+    issuePasswordResetChallenge: jest.fn(async () => ({
+      challengeId: 'reset-challenge-1',
+      expiresInSeconds: 600,
+      resendAfterSeconds: 60,
+    })),
+    resetPassword: jest.fn(async () => undefined),
+    register: jest.fn(async () => undefined),
+    updatePreference: jest.fn(async (patch: Partial<UserPreference>) => ({
+      userId: 'user-1',
+      preferredVoice: null,
+      preferredAiSpeechSpeed: null,
+      cefrLevel: null,
+      memoryText: null,
+      ...patch,
+    })),
+    logout: jest.fn(async () => undefined),
+    unauthorized: jest.fn(async () => undefined),
+    emit(nextState) {
+      state = nextState;
+      listener?.(nextState);
+    },
+  };
+}
+
+const authenticatedState: AuthSessionState = {
+  status: 'authenticated',
+  user: {
+    id: 'user-1',
+    username: 'learner@example.com',
+    nickname: 'Yufan',
+    role: 'USER',
+    status: 'ACTIVE',
+    lastLoginAt: null,
+    createdAt: '2026-08-05T00:00:00Z',
+  },
+  preference: {
+    userId: 'user-1',
+    preferredVoice: 'Harvey',
+    preferredAiSpeechSpeed: 'NATURAL',
+    cefrLevel: 'B',
+    memoryText: null,
+  },
+  error: null,
+};
+
+function SessionProbe() {
+  const model = useAppModel();
+  return (
+    <View>
+      <Text testID="session-state">
+        {JSON.stringify({
+          ready: model.isModelReady,
+          authenticated: model.isAuthenticated,
+          onboarded: model.hasCompletedOnboarding,
+          nickname: model.nickname,
+          level: model.level,
+          teacher: model.teacher.name,
+          speed: model.speed,
+        })}
+      </Text>
+      <Pressable
+        accessibilityLabel="test-login"
+        onPress={() =>
+          void model.signIn({
+            username: 'learner@example.com',
+            password: 'password123456',
+          })
+        }
+      />
+    </View>
+  );
+}
+
+function OnboardingProbe() {
+  const model = useAppModel();
+  return (
+    <View>
+      <Pressable accessibilityLabel="choose-level" onPress={() => model.setLevel('basic')} />
+      <Pressable accessibilityLabel="save-ielts-level" onPress={() => void model.saveLevel('independent')} />
+      <Pressable accessibilityLabel="choose-teacher" onPress={() => model.setTeacher(teachers[1])} />
+      <Pressable accessibilityLabel="complete-onboarding" onPress={() => void model.completeOnboarding()} />
+    </View>
+  );
+}
+
+function ProfileSettingsProbe() {
+  const model = useAppModel();
+  return (
+    <View>
+      <Text testID="profile-email">{model.email}</Text>
+      <Pressable accessibilityLabel="save-speed" onPress={() => void model.saveSpeed('慢一些')} />
+      <Pressable accessibilityLabel="save-teacher" onPress={() => void model.saveTeacher(teachers[2])} />
+    </View>
+  );
+}
+
+function ConversationSettingsProbe() {
+  const model = useAppModel();
+  return (
+    <Pressable
+      accessibilityLabel="save-conversation-settings"
+      onPress={() =>
+        void model.saveConversationSettings({
+          speed: '慢一些',
+          level: 'basic',
+          teacher: teachers[2],
+        })
+      }
+    />
+  );
+}
+
+function NicknameProbe() {
+  const model = useAppModel();
+  return <Text testID="nickname">{model.nickname}</Text>;
+}
+
+function CollectionProbe() {
+  const model = useAppModel();
+  return <View>
+    <Text testID="collection-counts">{`${model.sceneRecords.length}/${model.ieltsRecords.length}/${model.interviewRecords.length}/${model.membership}`}</Text>
+    <Pressable accessibilityLabel="mutate-collections" onPress={() => {
+      model.addSceneRecord({ id: 'scene-new' } as any);
+      model.addSceneRecord({ id: 'scene-new' } as any);
+      model.addIeltsRecord({ id: 'ielts-new' } as any);
+      model.addIeltsRecord({ id: 'ielts-new' } as any);
+      model.addInterviewRecord({ id: 'interview-new' } as any);
+      model.addInterviewRecord({ id: 'interview-new' } as any);
+      model.removeSceneRecord('scene-new');
+      model.setMembership('专业版');
+    }} />
+    <Pressable accessibilityLabel="set-invalid-level" onPress={() => model.setLevel('missing-level')} />
+    <Pressable accessibilityLabel="save-invalid-settings" onPress={() => {
+      void model.completeOnboarding();
+      void model.saveLevel('missing-level');
+      void model.saveConversationSettings({ speed: '自然', level: 'missing-level', teacher: teachers[0] });
+    }} />
+  </View>;
+}
+
+describe('AppModelProvider authentication binding', () => {
+  it('starts without a default nickname for an anonymous session', async () => {
+    const controller = createController({
+      status: 'anonymous',
+      user: null,
+      preference: null,
+      error: null,
+    });
+    const screen = await render(
+      <AppModelProvider authController={controller}>
+        <NicknameProbe />
+      </AppModelProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('nickname').props.children).toBe(''));
+  });
+
+  it('hydrates the finalized UI choices from the authenticated backend preference', async () => {
+    const controller = createController(authenticatedState);
+    const screen = await render(
+      <AppModelProvider authController={controller}>
+        <SessionProbe />
+      </AppModelProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('session-state').props.children).toBe(
+        JSON.stringify({
+          ready: true,
+          authenticated: true,
+          onboarded: true,
+          nickname: 'Yufan',
+          level: 'basic',
+          teacher: 'James',
+          speed: '自然',
+        }),
+      ),
+    );
+  });
+
+  it('passes credentials to the real authentication controller', async () => {
+    const controller = createController({
+      status: 'anonymous',
+      user: null,
+      preference: null,
+      error: null,
+    });
+    const screen = await render(
+      <AppModelProvider authController={controller}>
+        <SessionProbe />
+      </AppModelProvider>,
+    );
+
+    await waitFor(() => expect(controller.subscribe).toHaveBeenCalledTimes(1));
+    await fireEvent.press(screen.getByLabelText('test-login'));
+
+    await waitFor(() =>
+      expect(controller.login).toHaveBeenCalledWith({
+        username: 'learner@example.com',
+        password: 'password123456',
+      }),
+    );
+  });
+
+  it('persists the selected level and teacher when onboarding completes', async () => {
+    const controller = createController({
+      ...authenticatedState,
+      preference: {
+        ...authenticatedState.preference!,
+        preferredVoice: null,
+        cefrLevel: null,
+      },
+    });
+    const screen = await render(
+      <AppModelProvider authController={controller}>
+        <OnboardingProbe />
+      </AppModelProvider>,
+    );
+
+    await waitFor(() => expect(controller.subscribe).toHaveBeenCalledTimes(1));
+    await fireEvent.press(screen.getByLabelText('choose-level'));
+    await fireEvent.press(screen.getByLabelText('choose-teacher'));
+    await fireEvent.press(screen.getByLabelText('complete-onboarding'));
+
+    await waitFor(() =>
+      expect(controller.updatePreference).toHaveBeenCalledWith({
+        cefrLevel: 'B',
+        preferredVoice: 'Harvey',
+      }),
+    );
+  });
+
+  it('persists a changed IELTS intake level in the user preference', async () => {
+    const controller = createController(authenticatedState);
+    const screen = await render(
+      <AppModelProvider authController={controller}>
+        <OnboardingProbe />
+      </AppModelProvider>,
+    );
+
+    await fireEvent.press(screen.getByLabelText('save-ielts-level'));
+
+    await waitFor(() =>
+      expect(controller.updatePreference).toHaveBeenCalledWith({
+        cefrLevel: 'C',
+      }),
+    );
+  });
+
+  it('exposes the authenticated email and persists profile assistant settings', async () => {
+    const controller = createController(authenticatedState);
+    const screen = await render(
+      <AppModelProvider authController={controller}>
+        <ProfileSettingsProbe />
+      </AppModelProvider>,
+    );
+
+    expect(screen.getByTestId('profile-email').props.children).toBe('learner@example.com');
+    await fireEvent.press(screen.getByLabelText('save-speed'));
+    await fireEvent.press(screen.getByLabelText('save-teacher'));
+
+    await waitFor(() => {
+      expect(controller.updatePreference).toHaveBeenCalledWith({
+        preferredAiSpeechSpeed: 'SLOWER',
+      });
+      expect(controller.updatePreference).toHaveBeenCalledWith({
+        preferredVoice: teachers[2].voiceId,
+      });
+    });
+  });
+
+  it('persists all conversation settings in one preference update', async () => {
+    const controller = createController(authenticatedState);
+    const screen = await render(
+      <AppModelProvider authController={controller}>
+        <ConversationSettingsProbe />
+      </AppModelProvider>,
+    );
+
+    await fireEvent.press(screen.getByLabelText('save-conversation-settings'));
+
+    await waitFor(() =>
+      expect(controller.updatePreference).toHaveBeenCalledWith({
+        preferredAiSpeechSpeed: 'SLOWER',
+        cefrLevel: 'B',
+        preferredVoice: teachers[2].voiceId,
+      }),
+    );
+    expect(controller.updatePreference).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates local records, removes scenes, and applies invalid-level fallbacks', async () => {
+    const controller = createController(authenticatedState);
+    const screen = await render(<AppModelProvider authController={controller}><CollectionProbe /></AppModelProvider>);
+    await fireEvent.press(screen.getByLabelText('mutate-collections'));
+    await waitFor(() => expect(screen.getByTestId('collection-counts').props.children).toMatch(/\/1\/专业版$/));
+    await fireEvent.press(screen.getByLabelText('set-invalid-level'));
+    await fireEvent.press(screen.getByLabelText('save-invalid-settings'));
+    await waitFor(() => expect(controller.updatePreference).toHaveBeenCalledTimes(3));
+    expect(controller.updatePreference).toHaveBeenCalledWith(expect.objectContaining({ cefrLevel: 'A' }));
+    screen.unmount();
+  });
+});

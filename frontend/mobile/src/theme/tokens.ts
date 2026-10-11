@@ -1,0 +1,133 @@
+import type { ImageSourcePropType } from 'react-native';
+
+export const colors = {
+  ink: '#151514',
+  muted: '#777773',
+  subtle: '#92928E',
+  line: '#DEDED8',
+  canvas: '#FFFFFF',
+  soft: '#F4F4F1',
+  paper: '#FBFBF9',
+  white: '#FFFFFF',
+  green: '#4A765E',
+  greenSoft: '#EDF5EF',
+  red: '#A8463C',
+  redSoft: '#FAF2F0',
+} as const;
+
+export const spacing = {
+  xs: 6,
+  sm: 10,
+  md: 16,
+  lg: 22,
+  xl: 28,
+} as const;
+
+export type Teacher = {
+  id: string;
+  name: string;
+  accent: string;
+  personality: string;
+  intro: string;
+  voiceId: 'Katerina' | 'Aiden' | 'Raymond' | 'Tina' | 'Harvey' | 'Dolce';
+  image: ImageSourcePropType;
+  audio: number;
+};
+
+export const teachers: Teacher[] = [
+  {
+    id: 'clara',
+    name: 'Clara',
+    accent: '美式口音',
+    personality: '温柔耐心',
+    intro: "Hi, I'm Clara. Take your time — we'll make speaking feel natural.",
+    voiceId: 'Katerina',
+    image: require('../../assets/images/unispeaking/teachers/clara.png'),
+    audio: require('../../assets/audio/teachers/clara.wav'),
+  },
+  {
+    id: 'james',
+    name: 'James',
+    accent: '英式口音',
+    personality: '清晰理性',
+    intro: "Hi, I'm James. We'll make every sentence clear and confident.",
+    voiceId: 'Harvey',
+    image: require('../../assets/images/unispeaking/teachers/james.png'),
+    audio: require('../../assets/audio/teachers/james.wav'),
+  },
+  {
+    id: 'leo',
+    name: 'Leo',
+    accent: '美式口音',
+    personality: '开朗活力',
+    intro: "Hi, I'm Leo. Let's keep it relaxed, lively, and easy to start.",
+    voiceId: 'Raymond',
+    image: require('../../assets/images/unispeaking/teachers/leo.png'),
+    audio: require('../../assets/audio/teachers/leo.wav'),
+  },
+  {
+    id: 'david',
+    name: 'David',
+    accent: '美式口音',
+    personality: '沉稳直接',
+    intro: "Hi, I'm David. We'll make your English concise, natural, and ready for work.",
+    voiceId: 'Aiden',
+    image: require('../../assets/images/unispeaking/teachers/david.png'),
+    audio: require('../../assets/audio/teachers/david.wav'),
+  },
+  {
+    id: 'emily',
+    name: 'Emily',
+    accent: '英式口音',
+    personality: '自然亲切',
+    intro: "Hi, I'm Emily. We'll build fluent English through warm, everyday conversation.",
+    voiceId: 'Tina',
+    image: require('../../assets/images/unispeaking/teachers/emily.png'),
+    audio: require('../../assets/audio/teachers/emily.wav'),
+  },
+  {
+    id: 'arthur',
+    name: 'Arthur',
+    accent: '英式口音',
+    personality: '睿智从容',
+    intro: "Hi, I'm Arthur. We'll slow down, think clearly, and express richer ideas.",
+    voiceId: 'Dolce',
+    image: require('../../assets/images/unispeaking/teachers/arthur.png'),
+    audio: require('../../assets/audio/teachers/arthur.wav'),
+  },
+];
+
+export const levels = [
+  { id: 'starter', cefrLevel: 'A', title: '刚开始学', note: '能听懂或说出少量单词' },
+  { id: 'basic', cefrLevel: 'B', title: '可以简单交流', note: '能用简单句表达基本需求' },
+  { id: 'independent', cefrLevel: 'C', title: '可以连续表达', note: '能围绕熟悉话题说一段话' },
+  { id: 'fluent', cefrLevel: 'D', title: '表达比较流利', note: '能自然参与大多数日常交流' },
+] as const;
+
+export const speedOptions = ['慢一些', '适中', '自然', '快一些'] as const;
+
+export const brandAssets = {
+  mark: require('../../assets/images/unispeaking/brand-mark.jpg'),
+  wordmark: require('../../assets/images/unispeaking/wordmark.png'),
+} as const;
+
+export const examinerAssets = {
+  daniel: require('../../assets/images/unispeaking/examiners/daniel.png'),
+  marcus: require('../../assets/images/unispeaking/examiners/marcus.png'),
+  margaret: require('../../assets/images/unispeaking/examiners/margaret.png'),
+  sophia: require('../../assets/images/unispeaking/examiners/sophia.png'),
+} as const;
+
+export const ieltsAssets = {
+  flame: require('../../assets/images/specialty/ielts-flame.png'),
+  calendar: require('../../assets/images/specialty/ielts-calendar.png'),
+  target: require('../../assets/images/specialty/ielts-target.png'),
+  badge: require('../../assets/images/specialty/ielts-badge.png'),
+} as const;
+
+export const interviewAssets = {
+  hero: require('../../assets/images/specialty/interview-hero.png'),
+  resume: require('../../assets/images/specialty/interview-resume.png'),
+  company: require('../../assets/images/specialty/interview-company.png'),
+  briefcase: require('../../assets/images/specialty/interview-briefcase.png'),
+} as const;

@@ -1,0 +1,130 @@
+package com.unispeaking.infrastructure.storage.qiniu;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+
+import com.qiniu.http.Response;
+import com.qiniu.storage.BucketManager;
+import com.qiniu.storage.UploadManager;
+import com.qiniu.util.Auth;
+import com.unispeaking.infrastructure.config.ObjectStorageProperties;
+import java.net.URI;
+import java.time.Duration;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class QiniuObjectStorageProviderTest {
+
+	private static final String BUCKET = "profile-bucket";
+	private static final String OBJECT_KEY = "avatars/user/avatar.png";
+	private UploadManager uploadManager;
+	private BucketManager bucketManager;
+	private QiniuObjectStorageProvider provider;
+
+	@BeforeEach
+	void setUp() {
+		ObjectStorageProperties properties = new ObjectStorageProperties();
+		properties.setAccessKey("test-access-key");
+		properties.setSecretKey("test-secret-key");
+		properties.setBucket(BUCKET);
+		properties.setDomain("https://profile.example.com");
+		uploadManager = mock(UploadManager.class);
+		bucketManager = mock(BucketManager.class);
+		provider = new QiniuObjectStorageProvider(
+				Auth.create("test-access-key", "test-secret-key"),
+				uploadManager,
+				bucketManager,
+				properties);
+	}
+
+	@Test
+	void uploadsWithAKeyScopedTokenAndClosesTheResponse() throws Exception {
+		byte[] content = new byte[] {1, 2, 3};
+		Response response = mock(Response.class);
+		when(uploadManager.put(
+				eq(content),
+				eq(OBJECT_KEY),
+				anyString(),
+				isNull(),
+				eq("image/png"),
+				eq(false))).thenReturn(response);
+
+		provider.put(OBJECT_KEY, content, "image/png");
+
+		verify(uploadManager).put(
+				eq(content),
+				eq(OBJECT_KEY),
+				anyString(),
+				isNull(),
+				eq("image/png"),
+				eq(false));
+		verify(response).close();
+	}
+
+	@Test
+	void createsAnHttpsPrivateDownloadUrl() {
+		URI result = provider.signGetUrl(OBJECT_KEY, Duration.ofMinutes(5));
+
+		assertEquals("https", result.getScheme());
+		assertEquals("profile.example.com", result.getHost());
+		assertEquals("/" + OBJECT_KEY, result.getPath());
+		assertTrue(result.getQuery().contains("e="));
+		assertTrue(result.getQuery().contains("token=test-access-key:"));
+	}
+
+	@Test
+	void deletesFromTheConfiguredBucket() throws Exception {
+		provider.delete(OBJECT_KEY);
+
+		verify(bucketManager).delete(BUCKET, OBJECT_KEY);
+	}
+
+	@Test
+	void rejectsAnInsecureDownloadDomain() {
+		ObjectStorageProperties properties = new ObjectStorageProperties();
+		properties.setDomain("http://profile.example.com");
+
+		assertThrows(
+				IllegalArgumentException.class,
+				() -> new QiniuObjectStorageProvider(
+						Auth.create("access-key", "secret-key"),
+						uploadManager,
+						bucketManager,
+						properties));
+	}
+
+	@Test
+	void mapsUploadDeleteSigningAndDomainFailures() throws Exception {
+		when(uploadManager.put(any(byte[].class), anyString(), anyString(), isNull(), anyString(), eq(false)))
+				.thenThrow(new com.qiniu.common.QiniuException(new java.io.IOException("upload failed")));
+		assertEquals("OBJECT_STORAGE_FAILED", assertThrows(
+				com.unispeaking.common.exception.BusinessException.class,
+				() -> provider.put(OBJECT_KEY, new byte[] {1}, "image/png")).code());
+		when(bucketManager.delete(BUCKET, OBJECT_KEY))
+				.thenThrow(new com.qiniu.common.QiniuException(new java.io.IOException("delete failed")));
+		assertEquals("OBJECT_STORAGE_FAILED", assertThrows(
+				com.unispeaking.common.exception.BusinessException.class,
+				() -> provider.delete(OBJECT_KEY)).code());
+		assertThrows(com.unispeaking.common.exception.BusinessException.class,
+				() -> provider.signGetUrl(OBJECT_KEY, Duration.ZERO));
+		assertThrows(com.unispeaking.common.exception.BusinessException.class,
+				() -> provider.signGetUrl(OBJECT_KEY, null));
+		assertTrue(provider.available());
+		for (String domain : new String[] {"https://x.example.com/path", "https://user:x@example.com",
+				"https://x.example.com?x=1", "https://x.example.com#f", "http://x.example.com"}) {
+			ObjectStorageProperties properties = new ObjectStorageProperties();
+			properties.setDomain(domain);
+			assertThrows(IllegalArgumentException.class, () -> new QiniuObjectStorageProvider(
+					Auth.create("a", "b"), uploadManager, bucketManager, properties));
+		}
+	}
+}
