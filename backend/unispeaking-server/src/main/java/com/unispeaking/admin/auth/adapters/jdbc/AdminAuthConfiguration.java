@@ -30,12 +30,13 @@ public class AdminAuthConfiguration {
     JdbcAdminIdentityRepository adminIdentities(
             JdbcTemplate jdbc,
             @Qualifier("adminPasswordEncoder") PasswordEncoder passwordEncoder,
-            @Value("${unispeaking.admin.bootstrap-password:}") String bootstrapPassword) {
+            @Value("${unispeaking.admin.bootstrap-password:}") String bootstrapPassword,
+            @Value("${unispeaking.auth.bootstrap-login:admin@unispeaking.local}") String configuredLogin) {
         var repository = new JdbcAdminIdentityRepository(jdbc);
         if (StringUtils.hasText(bootstrapPassword)) {
             repository.saveOrUpdateBootstrap(new AdminAccount(
                     UUID.fromString("00000000-0000-0000-0000-000000000001"),
-                    "admin@unispeaking.local",
+                    configuredLogin.trim().toLowerCase(java.util.Locale.ROOT),
                     passwordEncoder.encode(bootstrapPassword),
                     AdminRole.SUPER_ADMIN,
                     true),
