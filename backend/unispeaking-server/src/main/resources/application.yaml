@@ -176,9 +176,11 @@ gateway:
 unispeaking:
   auth:
     persistence: ${AUTH_PERSISTENCE:postgres}
-    # Development switch: keeps the existing controller/JWT contract while
-    # allowing local product work before the user identity database is ready.
+    # Development switch: opt in only when deliberately testing without a
+    # database. Persistent PostgreSQL authentication is the default.
     mock-enabled: ${UNISPEAKING_AUTH_MOCK_ENABLED:false}
+    bootstrap-login: ${UNISPEAKING_ADMIN_LOGIN:admin@unispeaking.local}
+    bootstrap-nickname: ${UNISPEAKING_ADMIN_NICKNAME:UniSpeaking Admin}
     secure-cookie: ${AUTH_COOKIE_SECURE:false}
     session-max-age-seconds: ${AUTH_SESSION_MAX_AGE_SECONDS:28800}
     captcha:
