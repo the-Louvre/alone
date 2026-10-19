@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockApi = vi.hoisted(() => ({
+  requestAuthenticated: vi.fn(),
   changePassword: vi.fn(),
   clearAuthSession: vi.fn(),
   advanceCustomSceneFlow: vi.fn(),
@@ -82,6 +83,7 @@ const mockAchievements = vi.hoisted(() => ({
 vi.mock("@phosphor-icons/react", () => {
   const Icon = () => null;
   return {
+    Copy: Icon, Suitcase: Icon, ChatCircleDots: Icon, ClockCounterClockwise: Icon, Stop: Icon, CircleNotch: Icon, Sparkle: Icon, UserCircle: Icon,
     ArrowLeft: Icon,
     ArrowClockwise: Icon,
     ArrowRight: Icon,
@@ -309,6 +311,8 @@ describe("App", () => {
     vi.clearAllMocks();
     mockRealtime.clients.length = 0;
     mockApi.getAccessToken.mockReturnValue(null);
+    mockApi.requestAuthenticated.mockResolvedValue([]);
+    Element.prototype.scrollIntoView = vi.fn();
     mockApi.getDailyPicks.mockResolvedValue({ picks: [] });
     mockApi.getAchievementOverview.mockResolvedValue({ achievements: [] });
     mockApi.getLearningAssets.mockResolvedValue([]);
@@ -388,9 +392,43 @@ describe("App", () => {
       "a-valid-password",
       "human-token",
     ));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "想聊什么都可以" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText("这次想怎么聊")).toBeInTheDocument());
     expect(mockApi.getUserPreference).toHaveBeenCalled();
     expect(mockAnalytics.setDistinctId).toHaveBeenCalledWith("user-1");
+  });
+
+  it("keeps one original app shell across free chat, scenes, assets and profile", async () => {
+    configureAuthenticatedDefaults(); resetLocation("/conversation");
+    const user = userEvent.setup(); render(<App />);
+    await screen.findByLabelText("这次想怎么聊");
+    const sidebar = document.querySelector(".sidebar");
+    expect(document.querySelectorAll(".sidebar")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /面试 独立练习/ })).toBeNull();
+    const originalSidebarClass = sidebar.className;
+    const chatWindow = document.querySelector(".app-main .aw-conversation-content");
+    expect(within(sidebar).queryByRole("button", { name: "新建 Agent" })).toBeNull();
+    expect(within(chatWindow).getByRole("button", { name: "新建 Agent" })).toBeInTheDocument();
+    expect(within(chatWindow).getByRole("navigation", { name: "Agent 选择" })).toBeInTheDocument();
+    await user.click(within(chatWindow).getByRole("button", { name: /日常聊友/ }));
+    expect(window.location.pathname).toBe("/conversation");
+    expect(document.querySelector(".aw-conversation-content")).toBe(chatWindow);
+    expect(screen.getByLabelText("Agent 名称")).toHaveValue("日常聊友");
+    await user.click(within(sidebar).getByRole("button", { name: "场景广场" }));
+    await screen.findByRole("heading", { name: "场景广场" });
+    expect(document.querySelector(".sidebar")).toBe(sidebar);
+    expect(sidebar.className.replace(" is-open", "")).toBe(originalSidebarClass);
+    expect(document.querySelector(".aw-agent-menu")).toBeNull();
+    expect(screen.getByRole("heading", { name: "创建专属场景" })).toBeInTheDocument();
+    await user.click(within(sidebar).getByRole("button", { name: "学习资产" }));
+    await screen.findByRole("heading", { name: "学习资产" });
+    expect(screen.getByRole("navigation", { name: "学习资产分类" })).toBeInTheDocument();
+    expect(document.querySelector(".sidebar")).toBe(sidebar);
+    await user.click(within(sidebar).getByRole("button", { name: "个人中心" }));
+    await screen.findByRole("heading", { name: "你的学习空间" });
+    expect(document.querySelector(".sidebar")).toBe(sidebar);
+    await user.click(within(sidebar).getByRole("button", { name: "自由对话" }));
+    await screen.findByLabelText("这次想怎么聊");
+    expect(document.querySelector(".sidebar")).toBe(sidebar);
   });
 
   it("navigates from conversation to scenes and the mocked IELTS page", async () => {
@@ -399,7 +437,7 @@ describe("App", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await screen.findByRole("heading", { name: "想聊什么都可以" });
+    await screen.findByLabelText("这次想怎么聊");
     await user.click(screen.getByRole("button", { name: "场景广场" }));
     expect(await screen.findByRole("heading", { name: "场景广场" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /雅思口语/ }));
@@ -415,7 +453,7 @@ describe("App", () => {
     configureAuthenticatedDefaults();
     resetLocation("/conversation");
     render(<App />);
-    await screen.findByRole("heading", { name: "想聊什么都可以" });
+    await screen.findByLabelText("这次想怎么聊");
 
     fireEvent(window, new Event("unispeaking:auth-session-expired"));
     expect(await screen.findByRole("heading", { name: "欢迎回来" })).toBeInTheDocument();
@@ -437,9 +475,9 @@ describe("App", () => {
     resetLocation("/conversation");
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByRole("heading", { name: "想聊什么都可以" });
+    await screen.findByLabelText("这次想怎么聊");
 
-    const sidebar = screen.getByRole("complementary");
+    const sidebar = screen.getAllByRole("complementary")[0];
     await user.click(within(sidebar).getByRole("button", { name: "个人中心" }));
     expect(await screen.findByRole("heading", { name: "你的学习空间" })).toBeInTheDocument();
     expect(window.location.pathname).toBe("/profile");
@@ -519,9 +557,9 @@ describe("App", () => {
     await user.click(within(profileNav).getByRole("button", { name: "学习目标与洞察" }));
     expect(await screen.findByTestId("stub-learning-insights")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "开始自由对话" }));
-    expect(await screen.findByRole("heading", { name: "想聊什么都可以" })).toBeInTheDocument();
+    expect(await screen.findByLabelText("这次想怎么聊")).toBeInTheDocument();
 
-    await user.click(within(screen.getByRole("complementary")).getByRole("button", { name: "个人中心" }));
+    await user.click(within(screen.getAllByRole("complementary")[0]).getByRole("button", { name: "个人中心" }));
     await user.click(within(screen.getByRole("navigation", { name: "个人中心导航" })).getByRole("button", { name: "帮助中心" }));
     expect(await screen.findByTestId("stub-help-center")).toBeInTheDocument();
 
@@ -670,73 +708,24 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "选择 James" }));
     mockApi.updateUserPreference.mockResolvedValue({ cefrLevel: "B", preferredVoice: "Harvey" });
     await user.click(screen.getByRole("button", { name: "选择这位老师" }));
-    expect(await screen.findByRole("heading", { name: "想聊什么都可以" })).toBeInTheDocument();
+    expect(await screen.findByLabelText("这次想怎么聊")).toBeInTheDocument();
   });
 
-  it("covers the free conversation lifecycle, realtime events, translation, and cleanup", async () => {
-    configureAuthenticatedDefaults();
-    resetLocation("/conversation");
-    const user = userEvent.setup();
-    render(<App />);
-    await screen.findByRole("heading", { name: "想聊什么都可以" });
-
-    await user.click(screen.getByRole("button", { name: "对话设置" }));
-    const settings = screen.getByRole("dialog", { name: "对话设置" });
-    expect(settings).toBeInTheDocument();
-    await user.click(within(settings).getByRole("button", { name: "自然" }));
-    await user.click(within(settings).getByRole("button", { name: "英语水平" }));
-    await user.click(within(settings).getByRole("option", { name: /可以简单交流/ }));
-    await user.click(within(settings).getByRole("button", { name: /James 英式口音/ }));
-    mockApi.updateUserPreference.mockResolvedValue({ cefrLevel: "B", preferredVoice: "Harvey", preferredAiSpeechSpeed: "NATURAL" });
-    await user.click(within(settings).getByRole("button", { name: "保存设置" }));
-    await waitFor(() => expect(mockApi.updateUserPreference).toHaveBeenCalled());
-
-    const startPromise = Promise.resolve({ sessionId: "free-session-1" });
-    mockRealtime.createRealtimeClient.mockImplementationOnce((options = {}) => {
-      const client = {
-        options,
-        start: vi.fn().mockReturnValue(startPromise),
-        pause: vi.fn().mockResolvedValue(undefined),
-        resume: vi.fn().mockResolvedValue(undefined),
-        stop: vi.fn().mockResolvedValue(undefined),
-      };
-      mockRealtime.clients.push(client);
-      return client;
-    });
-    await user.click(screen.getByRole("button", { name: "开始对话" }));
-    await waitFor(() => expect(mockRealtime.clients.length).toBeGreaterThan(0));
+  it("passes edited Agent settings into realtime and restores saved transcripts", async () => {
+    configureAuthenticatedDefaults(); resetLocation("/conversation");
+    const user = userEvent.setup(); render(<App />);
+    await screen.findByLabelText("这次想怎么聊");
+    await user.selectOptions(screen.getByLabelText("声音"), "Harvey");
+    await user.clear(screen.getByLabelText("对话提示词"));
+    await user.type(screen.getByLabelText("对话提示词"), "Talk about pottery only.");
+    await user.click(screen.getByRole("button", { name: "用这段提示词开聊" }));
     const client = mockRealtime.clients.at(-1);
-    await waitFor(() => expect(client.start).toHaveBeenCalledWith({ voice: "Harvey", speechSpeed: "NATURAL" }));
-    await screen.findByRole("button", { name: "结束当前会话" });
-
-    await act(async () => {
-      client.options.onEvent({ type: "local.connecting" });
-      client.options.onEvent({ type: "local.connected" });
-      client.options.onEvent({ type: "session.created" });
-      client.options.onEvent({ type: "session.updated" });
-      client.options.onEvent({ type: "local.transcript.final", itemId: "assistant-1", owner: 2, text: "Hey there" });
-      client.options.onEvent({ type: "conversation.item.input_audio_transcription.delta", item_id: "user-1", delta: "Hello" });
-      client.options.onEvent({ type: "response.text.delta", response_id: "assistant-live", delta: " How are you?" });
-      client.options.onEvent({ type: "input_audio_buffer.speech_started" });
-      client.options.onEvent({ type: "response.audio.delta" });
-      client.options.onEvent({ type: "local.interrupted" });
-    });
-    expect(screen.getByText("Hey there")).toBeInTheDocument();
-    expect(screen.getByText("Hello")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "查看James这句字幕的翻译" }));
-    await waitFor(() => expect(mockApi.translateSessionText).toHaveBeenCalledWith("free-session-1", "Hey there"));
-    await user.click(screen.getByRole("button", { name: "收起James这句字幕的翻译" }));
-
-    await user.click(screen.getByRole("button", { name: "暂停会话" }));
-    await waitFor(() => expect(client.pause).toHaveBeenCalled());
-    await user.click(screen.getByRole("button", { name: "恢复会话" }));
-    await waitFor(() => expect(client.resume).toHaveBeenCalled());
-    await user.click(screen.getByRole("button", { name: "关闭字幕" }));
-    await user.click(screen.getByRole("button", { name: "打开字幕" }));
-
-    await user.click(screen.getByRole("button", { name: "结束当前会话" }));
-    await waitFor(() => expect(client.stop).toHaveBeenCalledWith({ reason: "user_stop" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "想聊什么都可以" })).toBeInTheDocument());
+    expect(client.start).toHaveBeenCalledWith(expect.objectContaining({voice: "Harvey", agentConfig: expect.objectContaining({prompt:"Talk about pottery only."})}));
+    mockApi.requestAuthenticated.mockResolvedValue({sessionId:"free-session-1",channel:"voice",status:"ACTIVE",config:{name:"旅行搭子",level:"B1"},messages:[{messageNo:1,owner:0,content:"What do you enjoy making?"}],learning:[]});
+    await act(async () => client.options.onEvent({type:"local.connected",sessionId:"free-session-1"}));
+    expect(await screen.findByText("What do you enjoy making?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button",{name:"结束对话"}));
+    await waitFor(()=>expect(client.stop).toHaveBeenCalled());
   });
 
   it("covers generated scene creation, staged learning, pronunciation scoring, result, and cleanup", async () => {
@@ -900,36 +889,18 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "场景广场" })).toBeInTheDocument();
   });
 
-  it("covers free-call microphone, provider, quota, start, and unmount errors", async () => {
-    configureAuthenticatedDefaults();
-    resetLocation("/conversation");
-    const user = userEvent.setup();
-    let client;
-    mockRealtime.createRealtimeClient.mockImplementationOnce((options = {}) => {
-      client = {
-        options,
-        start: vi.fn().mockRejectedValue(new Error("启动失败")),
-        pause: vi.fn().mockResolvedValue(undefined),
-        resume: vi.fn().mockResolvedValue(undefined),
-        stop: vi.fn().mockResolvedValue(undefined),
-      };
-      mockRealtime.clients.push(client);
+  it("keeps the Agent editor usable when voice startup fails", async () => {
+    configureAuthenticatedDefaults(); resetLocation("/conversation");
+    const user = userEvent.setup(); let client;
+    mockRealtime.createRealtimeClient.mockImplementationOnce((options) => {
+      client={options,start:vi.fn().mockRejectedValue(new Error("麦克风被拒绝")),stop:vi.fn().mockResolvedValue(undefined)};
       return client;
     });
-    render(<App />);
-    await screen.findByRole("heading", { name: "想聊什么都可以" });
-    await user.click(screen.getByRole("button", { name: "开始对话" }));
-    expect(await screen.findByText("启动失败")).toBeInTheDocument();
-
-    await act(async () => {
-      client.options.onEvent({ type: "local.mic_error", message: "麦克风被拒绝" });
-      client.options.onEvent({ type: "error", error: { message: "提供方异常" } });
-      client.options.onEvent({ type: "local.provider_warning" });
-      client.options.onEvent({ type: "local.greeting_timeout" });
-    });
-    expect(screen.getByText("提供方异常")).toBeInTheDocument();
-    cleanup();
-    expect(client.stop).toHaveBeenCalledWith({ notifyBackend: false, reason: "component_unmount" });
+    render(<App />); await screen.findByLabelText("这次想怎么聊");
+    await user.click(screen.getByRole("button",{name:"用这段提示词开聊"}));
+    expect(await screen.findByRole("alert")).toHaveTextContent("麦克风被拒绝");
+    expect(client.stop).toHaveBeenCalled();
+    expect(screen.getByRole("button",{name:"想先打字？开始文字聊天"})).toBeEnabled();
   });
 
   it("covers scene translation failures, completion errors, and user stop errors", async () => {
@@ -1038,7 +1009,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "人机验证" }));
 
     await waitFor(() => expect(mockApi.updateUserPreference).toHaveBeenCalledWith({ preferredVoice: "Harvey" }));
-    expect(await screen.findByRole("heading", { name: "想聊什么都可以" })).toBeInTheDocument();
+    expect(await screen.findByLabelText("这次想怎么聊")).toBeInTheDocument();
     expect(window.location.pathname).toBe("/conversation");
     expect(window.sessionStorage.getItem("unispeaking.authReturnPath")).toBeNull();
   });
@@ -1162,21 +1133,11 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "返回场景广场" }));
     expect(await screen.findByRole("heading", { name: "场景广场" })).toBeInTheDocument();
 
-    resetLocation("/conversation");
-    cleanup();
-    configureAuthenticatedDefaults();
-    render(<App />);
-    await screen.findByRole("heading", { name: "想聊什么都可以" });
-    await user.click(screen.getByRole("button", { name: "开始对话" }));
-    const client = mockRealtime.clients.at(-1);
-    await waitFor(() => expect(client.start).toHaveBeenCalled());
-    await user.click(within(screen.getByRole("complementary")).getByRole("button", { name: "场景广场" }));
-    expect(screen.getByRole("heading", { name: "确定要退出当前训练吗？" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "继续训练" }));
-    expect(screen.queryByRole("heading", { name: "确定要退出当前训练吗？" })).not.toBeInTheDocument();
-    await user.click(within(screen.getByRole("complementary")).getByRole("button", { name: "场景广场" }));
-    await user.click(screen.getByRole("button", { name: "确认退出" }));
+    resetLocation("/conversation"); cleanup(); configureAuthenticatedDefaults(); render(<App />);
+    await screen.findByLabelText("这次想怎么聊");
+    await user.click(screen.getByRole("button", { name: "场景广场", exact: true }));
     expect(await screen.findByRole("heading", { name: "场景广场" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/scenes");
   });
 
   it("covers daily recommendation refresh and recommendation-generated preview", async () => {
@@ -1392,7 +1353,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByTestId("stub-ielts-training")).toBeInTheDocument();
-    await user.click(within(screen.getByRole("complementary")).getByRole("button", { name: "学习资产" }));
+    await user.click(within(screen.getAllByRole("complementary")[0]).getByRole("button", { name: "学习资产" }));
     expect(screen.getByRole("heading", { name: "确定要退出当前训练吗？" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "确认退出" }));
 

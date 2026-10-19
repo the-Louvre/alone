@@ -26,6 +26,10 @@ public class FreeChatSessionService {
 	private final FreeChatSceneService sceneService;
 	private final SessionLifecycleManager sessionLifecycle;
 	private final RealtimeSessionCoordinator sessionCoordinator;
+	private com.unispeaking.service.agent.AgentWorkspaceService workspace;
+
+	@org.springframework.beans.factory.annotation.Autowired
+	public void setWorkspace(com.unispeaking.service.agent.AgentWorkspaceService workspace) { this.workspace = workspace; }
 
 	public FreeChatSessionService(
 			FreeChatSceneService sceneService,
@@ -36,8 +40,9 @@ public class FreeChatSessionService {
 		this.sessionCoordinator = sessionCoordinator;
 	}
 	public StartSceneSessionResponse startSession(StartFreeChatRequest request) {
-		FreeChatSceneContext prepared = sceneService.prepare(
-				new FreeChatSceneRequest(null));
+		FreeChatSceneContext prepared = request.agentConfig() != null
+				? workspace.prepare(request.agentConfig())
+				: sceneService.prepare(new FreeChatSceneRequest(null));
 		var generated = prepared.scene();
 		SceneGenerationResponse scene = new SceneGenerationResponse(
 				generated.sceneId(),
@@ -52,6 +57,7 @@ public class FreeChatSessionService {
 						SceneType.FREE_CHAT,
 						"DIALOGUE",
 						generated.dialoguePrompt()));
+		if (request.agentConfig() != null) workspace.attach(started.sessionId(), request.agentConfig(), "voice", generated.dialoguePrompt());
 		return sessionCoordinator.connect(
 				scene,
 				"Free Chat",

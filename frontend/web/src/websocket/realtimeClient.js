@@ -668,6 +668,7 @@ export function createRealtimeClient({
   const customSceneId = sceneType === "custom" ? sceneId : null;
   const ieltsSceneId = sceneType === "ielts" ? sceneId : null;
   const interviewSceneId = sceneType === "interview" ? sceneId : null;
+  const freeChatSession = !customSceneId && !ieltsSceneId && !interviewSceneId;
   // Custom scenes keep the native Realtime VAD/response path. IELTS and
   // interviews still require deterministic application-owned prompts.
   const manualTurnResponses = Boolean(ieltsSceneId || interviewSceneId);
@@ -1004,6 +1005,7 @@ export function createRealtimeClient({
     pendingOperations.add(operation);
     try {
       await operation;
+      emit({ type: "local.transcript.saved", sessionId });
       return true;
     } finally {
       pendingOperations.delete(operation);
@@ -1745,6 +1747,7 @@ export function createRealtimeClient({
     silenceDurationMs = null,
     turnDetectionType = null,
     interruptResponse = null,
+    agentConfig = null,
   } = {}, attempt) {
     const startedAt = Date.now();
     let stage = "peer_connection";
@@ -1824,6 +1827,7 @@ export function createRealtimeClient({
       const backend = await postStart({
         offerSdp: peer.localDescription?.sdp || offer.sdp || "",
         voice,
+        ...(freeChatSession && agentConfig ? { agentConfig } : {}),
       });
       assertCurrentStart(attempt);
       sessionId = backend.sessionId;

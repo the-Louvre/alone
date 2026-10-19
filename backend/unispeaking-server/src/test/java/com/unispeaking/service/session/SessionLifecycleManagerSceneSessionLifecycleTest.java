@@ -393,7 +393,7 @@ class SessionLifecycleManagerSceneSessionLifecycleTest {
 	}
 
 	@Test
-	void freeChatMessagesRemainEphemeralAndEndingRemovesRuntime() {
+	void freeChatMessagesArePersistedAndEndingRemovesRuntime() {
 		FreeChatSceneSession session = new FreeChatSceneSession(
 				"freechat_session_1",
 				USER_ID);
@@ -407,7 +407,7 @@ class SessionLifecycleManagerSceneSessionLifecycleTest {
 				new Message(1, "ephemeral", null));
 		service.endSession(USER_ID, session.getId(), null);
 
-		verifyNoInteractions(sessionMessages);
+		verify(sessionMessages).append("freechat_scene_1", session.getId(), 1, new Message(1, "ephemeral", null));
 		assertTrue(sessions.findById(session.getId()).isEmpty());
 	}
 

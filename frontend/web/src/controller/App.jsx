@@ -1,3 +1,6 @@
+import { readAgentDraft } from "../component/agent/agentApi.js";
+import AgentLearningAssets from "../component/agent/AgentLearningAssets.jsx";
+import AgentWorkspace from "../component/agent/AgentWorkspace.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -2575,7 +2578,20 @@ function formatAssetDate(value) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-function Assets({ sceneId, onPractice, onIelts, onInterview, onOpenRecord, onCloseRecord, initialView = "home", initialRecordTitle }) {
+function Assets(props) {
+  if (props.initialView === "detail") return <SceneAssets {...props} />;
+  return <AgentLearningAssets initialTab={new URLSearchParams(window.location.search).get("tab") || "existing"}
+    onTabChange={(tab) => props.onNavigate(`/assets?tab=${tab}`)}
+    onOpenConversation={(id) => props.onNavigate(`/conversation/${id}`)}
+    onUseScene={(scene) => {
+      const draft = readAgentDraft(props.userId);
+      const config = { ...draft.config, purpose: `我想练习${scene.sceneInput || scene.title}。英语 ${draft.config.level}，请围绕这个情境自然交流。`, prompt: "" };
+      try { sessionStorage.setItem(`unispeaking.agent-draft.${props.userId || "local"}`, JSON.stringify({ config, dirty: true })); } catch { /* Navigation remains available without draft storage. */ }
+      props.onNavigate("/conversation");
+    }} renderSceneAssets={() => <SceneAssets {...props} />} />;
+}
+
+function SceneAssets({ sceneId, onPractice, onIelts, onInterview, onOpenRecord, onCloseRecord, initialView = "home", initialRecordTitle }) {
   const [records, setRecords] = useState([]);
   const [selectedId, setSelectedId] = useState(sceneId || "");
   const [detail, setDetail] = useState(null);
@@ -3161,6 +3177,8 @@ export function App() {
   const [teacher, setTeacher] = useState(() => teacherForVoice(initialRoute.selectedVoice) || teachers[0]);
   const [pendingVoice, setPendingVoice] = useState(() => teacherForVoice(initialRoute.selectedVoice)?.voiceId || null);
   const [page, setPage] = useState(initialRoute.page);
+  const [conversationSessionId, setConversationSessionId] = useState(initialRoute.conversationSessionId || null);
+  const [conversationSearch, setConversationSearch] = useState(window.location.search);
   const [sceneTitle, setSceneTitle] = useState("咖啡店点单");
   const [generatedScene, setGeneratedScene] = useState(
     () => cachedGeneratedScene(initialRoute.sceneId || initialRoute.assetSceneId),
@@ -3184,6 +3202,8 @@ export function App() {
     setFlow(route.flow);
     setAuthMode(route.authMode);
     setPage(route.page);
+    setConversationSessionId(route.conversationSessionId || null);
+    setConversationSearch(window.location.search);
     setTraining(route.training);
     setResult(route.result);
     setAssetView(route.assetView || "home");
@@ -3684,9 +3704,9 @@ export function App() {
   }
   let content;
   if (training) content = <Training sceneId={training.sceneId} sessionId={training.sessionId} sceneTitle={sceneTitle} sceneContent={generatedScene} teacher={teacher} speed={conversationSpeed} initialStep={training.initialStep} initialStage={training.stage} standaloneSpeak={training.standaloneSpeak} result={result} onExit={() => setMainPage(training.returnPage || "scenes")} onComplete={completeScenePractice} onBack={() => setMainPage(training.returnPage || "scenes")} onAssets={openCompletedAssetDetail} onStageChange={navigateSceneStage} />;
-  else if (page === "conversation") content = <Conversation teacher={teacher} speed={conversationSpeed} level={level} onSettingsChange={persistSettings} onBeforeStart={() => preferenceWriteChainRef.current.catch(() => undefined)} onSessionStarted={(sessionId) => navigate(paths.conversation.session(sessionId), { page: "conversation", conversationSessionId: sessionId, authMode })} onSessionEnded={(sessionId) => { navigate(paths.conversation.root, { page: "conversation", conversationSessionId: null, authMode }, true); recordCompletedPractice("free", sessionId); void refreshProfileOverview(); void synchronizeAchievements({ revealNotifications: true }); }} onActiveChange={setFreeConversationActive} />;
+  else if (page === "conversation") content = <AgentWorkspace key={user?.id || "local"} userId={user?.id} sessionId={conversationSessionId} routeSearch={conversationSearch} onNavigate={(path) => navigate(path, { authMode })} onActiveChange={setFreeConversationActive} onSessionEnded={(sessionId) => { recordCompletedPractice("free", sessionId); void refreshProfileOverview(); void synchronizeAchievements({ revealNotifications: true }); }} />;
   else if (page === "scenes") content = <Scenes teacher={teacher} onStartTraining={startTraining} onLocked={setPaywall} onIelts={selectIelts} onInterview={selectInterview} />;
-  else if (page === "assets") content = <Assets sceneId={assetSceneId} initialView={assetView} initialRecordTitle={sceneTitle} onOpenRecord={openCompletedAssetDetail} onCloseRecord={() => navigate(paths.assets.root, { assetView: "home", assetSceneId: null, authMode })} onIelts={() => selectMainPage("ielts-assets")} onInterview={() => selectMainPage("interview-assets")} onPractice={(scene) => startTraining(scene, "speak", { standaloneSpeak: false, returnPage: "assets" })} />;
+  else if (page === "assets") content = <Assets userId={user?.id} onNavigate={(path) => navigate(path, { authMode })} sceneId={assetSceneId} initialView={assetView} initialRecordTitle={sceneTitle} onOpenRecord={openCompletedAssetDetail} onCloseRecord={() => navigate(paths.assets.root, { assetView: "home", assetSceneId: null, authMode })} onIelts={() => selectMainPage("ielts-assets")} onInterview={() => selectMainPage("interview-assets")} onPractice={(scene) => startTraining(scene, "speak", { standaloneSpeak: false, returnPage: "assets" })} />;
   else if (page === "ielts") content = <IeltsTrainingCenter route={ieltsRoute} onNavigate={navigateIelts} onExit={() => setMainPage("scenes")} onAssets={() => navigateIelts(paths.ielts.assets.root)} />;
   else if (page === "ielts-assets") content = <IeltsAssets route={ieltsRoute} onNavigate={navigateIelts} onBack={() => setMainPage("scenes")} onBackToAssets={() => setMainPage("assets")} onBackToInterview={() => selectMainPage("interview-assets")} onTraining={() => navigateIelts(paths.ielts.root)} />;
   else if (page === "interview") content = <InterviewModule route={interviewRoute} teacher={teacher} speed={conversationSpeed} onNavigate={navigateInterview} onBack={() => setMainPage("scenes")} />;
