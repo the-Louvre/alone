@@ -19,10 +19,28 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+it("stops loading a missing conversation and lets the user retry", async () => {
+  let attempts = 0;
+  api.mockImplementation(async (path) => {
+    if (path === "/conversations/session-one") {
+      if (attempts++ === 0) throw new Error("对话不存在");
+      return conversation;
+    }
+    return [];
+  });
+  render(<AgentWorkspace sessionId="session-one" onNavigate={vi.fn()} />);
+  expect(await screen.findByText("无法读取这段对话")).toBeInTheDocument();
+  expect(screen.queryByText("正在读取对话…")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "重新读取对话" }));
+  expect(await screen.findByLabelText("聊天消息")).toBeInTheDocument();
+  expect(screen.queryByText("无法读取这段对话")).not.toBeInTheDocument();
+});
+
 it("generates an editable prompt and starts real chat with the edited text", async () => {
   api.mockImplementation(async (path) => {
     if (path === "/generate") return {name:"陶艺聊友",prompt:"Talk about pottery.",opening:"What do you make?"};
-    if (path === "/conversations") return conversation;
+    if (path === "/threads") return { ...conversation, threadId: "thread-one" };
+    if (path === "/threads/thread-one/messages") return { ...conversation, threadId: "thread-one", messages: [{ segmentId: "session-one", messageNo: 1, owner: 1, content: "Hello" }] };
     return [];
   });
   const user=userEvent.setup(); render(<AgentWorkspace onNavigate={vi.fn()} />);
@@ -34,8 +52,10 @@ it("generates an editable prompt and starts real chat with the edited text", asy
   await user.type(screen.getByLabelText("对话提示词"),"Discuss pottery; ask about glazing first.");
   expect(screen.queryByText("What do you make?")).not.toBeInTheDocument();
   await user.click(screen.getByRole("button",{name:"想先打字？开始文字聊天"}));
-  expect(api).toHaveBeenCalledWith("/conversations","POST",{config:expect.objectContaining({prompt:"Discuss pottery; ask about glazing first."})});
-  expect(await screen.findByLabelText("聊天消息")).toBeInTheDocument();
+  expect(api.mock.calls.some(([path, method]) => path === "/threads" && method === "POST")).toBe(false);
+  await user.type(await screen.findByLabelText("聊天消息"), "Hello");
+  await user.click(screen.getByRole("button", { name: "发送消息" }));
+  expect(api).toHaveBeenCalledWith("/threads", "POST", expect.objectContaining({ config: expect.objectContaining({ prompt: "Discuss pottery; ask about glazing first." }), requestId: expect.any(String) }));
   expect(document.querySelector('input[type="file"]')).toBeNull();
   expect(screen.queryByText(/评测|评分/)).toBeNull();
 });
@@ -58,6 +78,7 @@ it("saves separate Agents and sends optimistic versions on edits", async () => {
   });
   const user=userEvent.setup();render(<AgentWorkspace onNavigate={vi.fn()} />);
   await user.click(screen.getByRole("button",{name:"保存为 Agent"}));
+  await user.click(await screen.findByRole("button", { name: "修改设置" }));
   await screen.findByRole("button",{name:"保存修改"});
   await user.clear(screen.getByLabelText("Agent 名称"));await user.type(screen.getByLabelText("Agent 名称"),"我的搭子");
   await user.click(screen.getByRole("button",{name:"保存修改"}));
@@ -84,8 +105,9 @@ it("refreshes existing learning progress on completion without leaving the conve
   const onSessionEnded = vi.fn(), navigate = vi.fn();
   api.mockImplementation(async (path) => path.endsWith("/end") ? { ...conversation, status: "COMPLETED" } : path === "/conversations/session-one" ? conversation : []);
   render(<AgentWorkspace sessionId="session-one" onNavigate={navigate} onSessionEnded={onSessionEnded} />);
-  fireEvent.click(await screen.findByRole("button", { name: "结束对话" }));
-  await screen.findByText("这段对话已保存在历史中。原提示词和收藏词句会一直保留。");
+  fireEvent.click(await screen.findByRole("button", { name: "结束本次练习" }));
+  await screen.findByText("本次练习已结束，聊天记录已保存");
+  expect(screen.getByLabelText("聊天消息")).toBeInTheDocument();
   expect(onSessionEnded).toHaveBeenCalledExactlyOnceWith("session-one");
   expect(navigate).not.toHaveBeenCalled();
 });
@@ -101,7 +123,7 @@ it("collects a sentence with its source and restores completed history without s
   await screen.findByText("A cup of tea, please.");
   fireEvent.click(screen.getByRole("button",{name:"整句加入训练"}));
   await waitFor(()=>expect(api).toHaveBeenCalledWith("/conversations/session-one/learning","POST",expect.objectContaining({messageNo:2,text:"A cup of tea, please.",kind:"sentence"})));
-  expect(screen.queryByLabelText("聊天消息")).toBeNull();
+  expect(screen.getByLabelText("聊天消息")).toBeInTheDocument();
   expect(api.mock.calls.some(([path,method])=>path==="/conversations"&&method==="POST")).toBe(false);
 });
 
@@ -132,10 +154,10 @@ it("keeps the current conversation and unsent text while checking history", asyn
   const composer = await screen.findByLabelText("聊天消息");
   fireEvent.change(composer, { target: { value: "Keep this draft" } });
   fireEvent.click(screen.getByRole("button", { name: "对话记录", exact: true }));
-  await screen.findByRole("heading", { name: "学习资产", exact: true });
+  await screen.findByRole("dialog", { name: "对话历史记录" });
   expect(navigate).not.toHaveBeenCalled();
   expect(composer).toHaveValue("Keep this draft");
-  fireEvent.click(screen.getByRole("button", { name: "收起工作台面板" }));
+  fireEvent.click(screen.getByRole("button", { name: "关闭对话历史" }));
   expect(screen.getByLabelText("聊天消息")).toBe(composer);
   expect(composer).toHaveValue("Keep this draft");
   expect(api.mock.calls.some(([path, method]) => path.endsWith("/end") && method === "POST")).toBe(false);

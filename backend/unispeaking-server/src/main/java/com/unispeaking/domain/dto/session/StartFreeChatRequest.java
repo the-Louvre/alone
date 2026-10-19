@@ -11,8 +11,12 @@ public record StartFreeChatRequest(
 		String model,
 		String voice,
 		Boolean translationEnabled,
-		@Valid Config agentConfig) {
+		@Valid Config agentConfig,
+		String conversationId) {
+	public StartFreeChatRequest(String offerSdp, ProviderType provider, String model, String voice, Boolean translationEnabled, Config agentConfig) {
+		this(offerSdp, provider, model, voice, translationEnabled, agentConfig, null);
+	}
 	public StartFreeChatRequest(String offerSdp, ProviderType provider, String model, String voice, Boolean translationEnabled) {
-		this(offerSdp, provider, model, voice, translationEnabled, null);
+		this(offerSdp, provider, model, voice, translationEnabled, null, null);
 	}
 }

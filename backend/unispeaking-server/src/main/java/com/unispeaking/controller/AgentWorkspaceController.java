@@ -15,6 +15,19 @@ public class AgentWorkspaceController {
     @PostMapping("/agents") public ApiResponse<?> create(@Valid @RequestBody Config input) { return ApiResponse.success(service.save(null,input)); }
     @PutMapping("/agents/{id}") public ApiResponse<?> update(@PathVariable String id,@Valid @RequestBody Config input) { return ApiResponse.success(service.save(id,input)); }
     @PostMapping("/generate") public ApiResponse<?> generate(@Valid @RequestBody Generate input) { return ApiResponse.success(service.generate(input)); }
+    @PostMapping("/agents/{id}/open") public ApiResponse<?> openAgent(@PathVariable String id) { return ApiResponse.success(service.openAgent(id)); }
+    @PostMapping("/threads") public ApiResponse<?> createThread(@Valid @RequestBody ThreadStart input) { return ApiResponse.success(service.createThread(input.config(),input.requestId())); }
+    @GetMapping("/threads") public ApiResponse<?> threads(@RequestParam(required=false) String agentId,@RequestParam(defaultValue="0") int offset,@RequestParam(defaultValue="false") boolean deleted) { return ApiResponse.success(service.threadHistory(agentId,offset,deleted)); }
+    @GetMapping("/threads/{id}") public ApiResponse<?> thread(@PathVariable String id) { return ApiResponse.success(service.threadDetail(id)); }
+    @PostMapping("/threads/{id}/open") public ApiResponse<?> openThread(@PathVariable String id) { return ApiResponse.success(service.openThread(id)); }
+    @PostMapping("/threads/{id}/messages") public ApiResponse<?> threadTurn(@PathVariable String id,@Valid @RequestBody Turn input) { return ApiResponse.success(service.threadTurn(id,input)); }
+    @PostMapping("/threads/{id}/end") public ApiResponse<?> endThread(@PathVariable String id) { return ApiResponse.success(service.finishThread(id)); }
+    @DeleteMapping("/threads/{id}") public ApiResponse<?> deleteThread(@PathVariable String id) { return ApiResponse.success(service.deleteThread(id)); }
+    @PostMapping("/threads/{id}/restore") public ApiResponse<?> restoreThread(@PathVariable String id) { return ApiResponse.success(service.restoreThread(id)); }
+    @GetMapping("/legacy-conversations") public ApiResponse<?> legacy(@RequestParam(defaultValue="false") boolean deleted) { return ApiResponse.success(service.legacyHistory(deleted)); }
+    @DeleteMapping("/legacy-conversations/{id}") public ApiResponse<?> deleteLegacy(@PathVariable String id) { return ApiResponse.success(service.changeLegacyTrash(id,true)); }
+    @PostMapping("/legacy-conversations/{id}/restore") public ApiResponse<?> restoreLegacy(@PathVariable String id) { return ApiResponse.success(service.changeLegacyTrash(id,false)); }
+    @PostMapping("/conversations/{id}/transcripts") public ApiResponse<?> transcript(@PathVariable String id,@Valid @RequestBody Transcript input) { return ApiResponse.success(service.transcript(id,input)); }
     @PostMapping("/conversations") public ApiResponse<?> start(@Valid @RequestBody Start input) { return ApiResponse.success(service.start(input.config())); }
     @GetMapping("/conversations") public ApiResponse<?> history() { return ApiResponse.success(service.history()); }
     @GetMapping("/conversations/{id}") public ApiResponse<?> detail(@PathVariable String id) { return ApiResponse.success(service.detail(id)); }

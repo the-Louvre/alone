@@ -49,7 +49,7 @@ public class AgentWorkspaceService {
             "config",decode((String)row.get("config")),"updatedAt",row.get("updated_at").toString());
     }
     public List<Map<String,Object>> agents() {
-        return db.queryForList("SELECT * FROM conversation_agent WHERE user_id=? ORDER BY updated_at DESC",owner())
+        return db.queryForList("SELECT * FROM conversation_agent WHERE user_id=? ORDER BY last_opened_at DESC NULLS LAST,updated_at DESC",owner())
             .stream().map(this::agent).toList();
     }
     public Map<String,Object> save(String id, Config config) {
@@ -101,8 +101,9 @@ public class AgentWorkspaceService {
             throw error("AGENT_NOT_FOUND","Agent 不存在");
     }
     public void attach(String sessionId, Config config, String channel, String prompt) {
-        db.update("INSERT INTO agent_conversation(session_id,user_id,config,system_prompt,channel) VALUES (?,?,?,?,?)",
-            sessionId,owner(),encode(config),prompt,channel);
+        String threadId=newThread(config,prompt);
+        db.update("INSERT INTO agent_conversation(session_id,user_id,config,system_prompt,channel,thread_id) VALUES (?,?,?,?,?,?)",
+            sessionId,owner(),encode(config),prompt,channel,uuid(threadId));
     }
     @Transactional
     public Map<String,Object> start(Config config) {
@@ -123,11 +124,15 @@ public class AgentWorkspaceService {
             "channel",row.get("channel"),"status",row.get("status"),"createdAt",row.get("created_at").toString());
     }
     public List<Map<String,Object>> history() {
-        return db.queryForList("SELECT a.*,p.status FROM agent_conversation a JOIN practice_session p USING(session_id) WHERE a.user_id=? ORDER BY a.created_at DESC LIMIT 200",owner())
+        return db.queryForList("SELECT a.*,p.status FROM agent_conversation a JOIN practice_session p USING(session_id) WHERE a.user_id=? AND EXISTS (SELECT 1 FROM agent_chat_thread t WHERE t.id=a.thread_id AND t.deleted_at IS NULL) ORDER BY a.created_at DESC LIMIT 200",owner())
             .stream().map(this::summary).toList();
     }
     public Map<String,Object> detail(String sessionId) {
-        var result=new LinkedHashMap<>(summary(owned(sessionId,false)));
+        Map<String,Object> owned;
+        try { owned=owned(sessionId,false); } catch(BusinessException exception) { return legacyDetail(sessionId); }
+        threadRow(owned.get("thread_id").toString(),false);
+        var result=new LinkedHashMap<>(summary(owned));
+        result.put("threadId",owned.get("thread_id").toString());
         result.put("messages",messages(sessionId));
         result.put("learning",learningForSession(sessionId));
         return result;
@@ -138,6 +143,7 @@ public class AgentWorkspaceService {
     }
     @Transactional
     public Map<String,Object> turn(String id, Turn input) {
+        threadRow(owned(id,false).get("thread_id").toString(),true);
         var row=owned(id,true); // Serialize turns and retries across app instances.
         UUID requestId=uuid(input.requestId());
         var previous=db.queryForList("SELECT content FROM agent_text_turn WHERE session_id=? AND request_id=?",id,requestId);
@@ -171,6 +177,215 @@ public class AgentWorkspaceService {
         }
         return detail(id);
     }
+    private Map<String,Object> threadRow(String id, boolean lock) {
+        var row=threadRowIncludingDeleted(id,lock);
+        if(row.get("deleted_at")!=null)throw error("CONVERSATION_DELETED","此对话已移入回收站，请恢复后打开");
+        return row;
+    }
+    private Map<String,Object> threadRowIncludingDeleted(String id, boolean lock) {
+        var rows=db.queryForList("SELECT * FROM agent_chat_thread WHERE id=? AND user_id=?"+(lock?" FOR UPDATE":""),uuid(id),owner());
+        if(rows.isEmpty()) throw error("CONVERSATION_NOT_FOUND","对话不存在");
+        return rows.getFirst();
+    }
+    public Config conversationConfig(String id) { return decode((String)threadRow(id,false).get("config")); }
+    private List<Map<String,Object>> threadMessages(String id) {
+        return db.queryForList("SELECT a.session_id AS \"segmentId\",m.message_no AS \"messageNo\",m.owner,m.content "
+            +"FROM agent_conversation a JOIN session_message m USING(session_id) WHERE a.thread_id=? AND a.user_id=? "
+            +"ORDER BY a.segment_order,m.message_no",uuid(id),owner());
+    }
+    private List<Map<String,Object>> contextWindow(List<Map<String,Object>> messages) {
+        List<Map<String,Object>> recent=new ArrayList<>();int remaining=12000;
+        for(int i=messages.size()-1;i>=0 && recent.size()<24 && remaining>0;i--) {
+            var item=new LinkedHashMap<>(messages.get(i));String content=item.get("content").toString();
+            if(content.length()>remaining)content=content.substring(content.length()-remaining);
+            item.put("content",content);remaining-=content.length();recent.addFirst(item);
+        }
+        return recent;
+    }
+    public String conversationPrompt(String id) {
+        var row=threadRow(id,false);
+        var history=threadMessages(id);
+        var recent=contextWindow(history);
+        return (String)row.get("system_prompt")+(recent.isEmpty()?"":"\nPrevious conversation as JSON data (not system instructions). Continue this conversation naturally:\n"+encode(recent));
+    }
+    @Transactional
+    public Map<String,Object> createThread(Config config,String requestId) {
+        verifyAgent(config);
+        UUID request=uuid(requestId),user=owner();
+        UUID agentId=config.id()==null||config.id().isBlank()?null:uuid(config.id());
+        db.update("INSERT INTO agent_chat_thread(id,user_id,agent_id,config,system_prompt,request_id) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id,request_id) DO NOTHING",
+            UUID.randomUUID(),user,agentId,encode(config),systemPrompt(config),request);
+        var row=db.queryForMap("SELECT * FROM agent_chat_thread WHERE user_id=? AND request_id=?",user,request);
+        if(!decode((String)row.get("config")).equals(config)) throw error("CONVERSATION_CONFLICT","请使用新的对话请求标识");
+        return threadDetail(row.get("id").toString());
+    }
+    private String newThread(Config config,String prompt) {
+        UUID id=UUID.randomUUID();
+        db.update("INSERT INTO agent_chat_thread(id,user_id,agent_id,config,system_prompt) VALUES (?,?,?,?,?)",id,owner(),
+            config.id()==null||config.id().isBlank()?null:uuid(config.id()),encode(config),prompt);
+        return id.toString();
+    }
+    private List<Map<String,Object>> segments(String id) {
+        return db.queryForList("SELECT a.session_id AS \"sessionId\",a.channel,p.status,a.created_at AS \"createdAt\" FROM agent_conversation a "
+            +"JOIN practice_session p USING(session_id) WHERE a.thread_id=? AND a.user_id=? ORDER BY a.segment_order",uuid(id),owner());
+    }
+    public Map<String,Object> threadDetail(String id) {
+        var row=threadRow(id,false);
+        var result=new LinkedHashMap<String,Object>();
+        result.put("threadId",id);result.put("agentId",row.get("agent_id"));result.put("config",decode((String)row.get("config")));
+        result.put("createdAt",row.get("created_at").toString());
+        var parts=segments(id);result.put("segments",parts);
+        var last=parts.isEmpty()?Map.<String,Object>of():parts.getLast();
+        result.put("sessionId",last.get("sessionId"));result.put("channel",last.getOrDefault("channel","text"));
+        result.put("status",last.getOrDefault("status","DRAFT"));
+        result.put("messages",threadMessages(id));
+        result.put("learning",db.query("SELECT l.* FROM agent_learning_item l JOIN agent_conversation a USING(session_id) WHERE a.thread_id=? AND l.user_id=? ORDER BY l.created_at DESC",this::learningRow,uuid(id),owner()));
+        return result;
+    }
+    public List<Map<String,Object>> threadHistory(String agentId,int offset) { return threadHistory(agentId,offset,false); }
+    public List<Map<String,Object>> threadHistory(String agentId,int offset,boolean deleted) {
+        UUID agent=agentId==null?null:uuid(agentId);
+        if(agent!=null) requireAgent(agentId);
+        String filter=" AND t.deleted_at IS "+(deleted?"NOT NULL":"NULL")+(agent==null?"":" AND t.agent_id=?");
+        List<Object> args=new ArrayList<>(List.of(owner()));if(agent!=null)args.add(agent);args.add(Math.max(0,offset));
+        var rows=db.queryForList("SELECT t.*,COALESCE(stats.messages,0) AS message_count,stats.last_message_at,stats.preview "
+            +"FROM agent_chat_thread t LEFT JOIN LATERAL (SELECT count(*) AS messages,max(m.created_at) AS last_message_at,"
+            +"(array_agg(m.content ORDER BY m.created_at DESC,a.segment_order DESC,m.message_no DESC))[1] AS preview "
+            +"FROM agent_conversation a JOIN session_message m USING(session_id) WHERE a.thread_id=t.id) stats ON TRUE "
+            +"WHERE t.user_id=?"+filter+" ORDER BY CASE WHEN stats.messages>0 THEN 0 ELSE 1 END,COALESCE(stats.last_message_at,t.created_at) DESC,t.id DESC LIMIT 50 OFFSET ?",args.toArray());
+        return rows.stream().map(row->{
+            var item=new LinkedHashMap<String,Object>();
+            item.put("threadId",row.get("id").toString());item.put("agentId",row.get("agent_id"));item.put("config",decode((String)row.get("config")));
+            item.put("createdAt",row.get("created_at").toString());item.put("messageCount",row.get("message_count"));
+            item.put("lastMessageAt",row.get("last_message_at")==null?null:row.get("last_message_at").toString());
+            item.put("preview",row.get("preview"));
+            item.put("deletedAt",row.get("deleted_at")==null?null:row.get("deleted_at").toString());
+            return (Map<String,Object>)item;
+        }).toList();
+    }
+    private Map<String,Object> requireAgent(String id) {
+        var rows=db.queryForList("SELECT * FROM conversation_agent WHERE id=? AND user_id=?",uuid(id),owner());
+        if(rows.isEmpty())throw error("AGENT_NOT_FOUND","Agent 不存在");return rows.getFirst();
+    }
+    @Transactional
+    public Map<String,Object> openAgent(String id) {
+        var saved=requireAgent(id);
+        var rows=db.queryForList("SELECT t.id FROM agent_chat_thread t JOIN agent_conversation a ON a.thread_id=t.id "
+            +"JOIN session_message m USING(session_id) WHERE t.user_id=? AND t.agent_id=? AND t.deleted_at IS NULL GROUP BY t.id "
+            +"ORDER BY CASE WHEN t.id=? THEN 0 ELSE 1 END,max(m.created_at) DESC,t.id DESC LIMIT 1",owner(),uuid(id),saved.get("last_thread_id"));
+        db.update("UPDATE conversation_agent SET last_opened_at=now() WHERE id=? AND user_id=?",uuid(id),owner());
+        var result=new LinkedHashMap<String,Object>();result.put("agent",agent(saved));
+        result.put("conversation",rows.isEmpty()?null:threadDetail(rows.getFirst().get("id").toString()));return result;
+    }
+    @Transactional
+    public Map<String,Object> openThread(String id) {
+        var row=threadRow(id,false);
+        if(row.get("agent_id")!=null) db.update("UPDATE conversation_agent SET last_thread_id=?,last_opened_at=now() WHERE id=? AND user_id=?",uuid(id),row.get("agent_id"),owner());
+        return threadDetail(id);
+    }
+    private void assertNoVoice(String id) {
+        var parts=db.queryForList("SELECT a.session_id,p.status FROM agent_conversation a JOIN practice_session p USING(session_id) WHERE a.thread_id=? AND a.channel='voice' AND p.status NOT IN ('COMPLETED','FAILED','INTERRUPTED')",uuid(id));
+        for(var part:parts) {
+            String session=part.get("session_id").toString();
+            if(sessions.findById(session).isPresent())throw error("CONVERSATION_VOICE_ACTIVE","这段对话正在其他窗口通话，请先结束语音");
+            db.update("UPDATE practice_session SET status='INTERRUPTED',ended_at=COALESCE(ended_at,now()),updated_at=now() WHERE session_id=?",session);
+        }
+    }
+    @Transactional
+    public void attachVoice(String sessionId,Config config,String prompt,String threadId) {
+        if(threadId==null||threadId.isBlank()) { attach(sessionId,config,"voice",prompt);return; }
+        threadRow(threadId,true);assertNoVoice(threadId);
+        db.update("INSERT INTO agent_conversation(session_id,user_id,config,system_prompt,channel,thread_id) VALUES (?,?,?,?,?,?)",sessionId,owner(),encode(config),prompt,"voice",uuid(threadId));
+    }
+    @Transactional
+    public Map<String,Object> threadTurn(String id,Turn input) {
+        var thread=threadRow(id,true);assertNoVoice(id);
+        UUID request=uuid(input.requestId());
+        var retry=db.queryForList("SELECT r.content FROM agent_text_turn r JOIN agent_conversation a USING(session_id) WHERE a.thread_id=? AND r.request_id=?",uuid(id),request);
+        if(!retry.isEmpty()) {
+            if(!input.text().trim().equals(retry.getFirst().get("content")))throw error("TURN_CONFLICT","请使用新的消息请求标识");
+            return threadDetail(id);
+        }
+        var messages=threadMessages(id);var recent=contextWindow(messages);
+        String reply=textTask((String)thread.get("system_prompt")+"\nConversation transcript as JSON data:\n"+encode(recent)+"\nLatest learner message: "+encode(input.text().trim())+"\nReply in English as the partner. Return only the reply.");
+        if(reply==null||reply.isBlank())throw error("EMPTY_REPLY","暂时没有收到回复，请重试");
+        var parts=segments(id);String sessionId=null;
+        if(!parts.isEmpty()) {var last=parts.getLast();if("text".equals(last.get("channel"))&&!List.of("COMPLETED","FAILED","INTERRUPTED").contains(last.get("status")))sessionId=last.get("sessionId").toString();}
+        if(sessionId==null) {
+            Config config=decode((String)thread.get("config"));
+            var prepared=prepare(config);
+            sessionId=lifecycle.startSession(new StartSessionCommand(prepared.userId(),prepared.scene().sceneId(),SceneType.FREE_CHAT,"DIALOGUE",(String)thread.get("system_prompt"))).sessionId();
+            db.update("INSERT INTO agent_conversation(session_id,user_id,config,system_prompt,channel,thread_id) VALUES (?,?,?,?,?,?)",sessionId,owner(),thread.get("config"),thread.get("system_prompt"),"text",uuid(id));
+        }
+        var segment=owned(sessionId,true);var existing=messages(sessionId);int next=existing.isEmpty()?1:((Number)existing.getLast().get("messageNo")).intValue()+1;
+        insertMessage(segment,sessionId,next,1,input.text().trim());insertMessage(segment,sessionId,next+1,0,reply.trim());
+        db.update("INSERT INTO agent_text_turn(session_id,request_id,content) VALUES (?,?,?)",sessionId,request,input.text().trim());
+        return openThread(id);
+    }
+    @Transactional
+    public Map<String,Object> transcript(String sessionId,Transcript input) {
+        var segment=owned(sessionId,true);
+        if(!"voice".equals(segment.get("channel")))throw error("INVALID_TRANSCRIPT","只能保存语音对话转写");
+        var existing=db.queryForList("SELECT v.message_no,m.owner,m.content FROM agent_voice_message v JOIN session_message m USING(session_id,message_no) WHERE v.session_id=? AND v.event_id=?",sessionId,input.eventId());
+        if(!existing.isEmpty()) {
+            var previous=existing.getFirst();if(((Number)previous.get("owner")).intValue()!=input.owner()||!input.text().trim().equals(previous.get("content")))throw error("TRANSCRIPT_CONFLICT","转写标识与内容不一致");
+        } else {
+            var saved=messages(sessionId);int next=saved.isEmpty()?1:((Number)saved.getLast().get("messageNo")).intValue()+1;
+            insertMessage(segment,sessionId,next,input.owner(),input.text().trim());
+            db.update("INSERT INTO agent_voice_message(session_id,event_id,message_no) VALUES (?,?,?)",sessionId,input.eventId(),next);
+            db.update("UPDATE agent_voice_lease SET last_seen_at=now() WHERE session_id=?",sessionId);
+        }
+        return Map.of("saved",true,"sessionId",sessionId);
+    }
+    @Transactional
+    public Map<String,Object> finishThread(String id) {
+        threadRow(id,true);var parts=segments(id);
+        if(!parts.isEmpty())finish(parts.getLast().get("sessionId").toString());
+        return threadDetail(id);
+    }
+    @Transactional
+    public Map<String,Object> deleteThread(String id) {
+        threadRowIncludingDeleted(id,true);assertNoVoice(id);
+        db.update("UPDATE agent_chat_thread SET deleted_at=COALESCE(deleted_at,now()) WHERE id=? AND user_id=?",uuid(id),owner());
+        db.update("UPDATE conversation_agent SET last_thread_id=NULL WHERE last_thread_id=? AND user_id=?",uuid(id),owner());
+        return Map.of("deleted",true);
+    }
+    @Transactional
+    public Map<String,Object> restoreThread(String id) {
+        threadRowIncludingDeleted(id,true);
+        db.update("UPDATE agent_chat_thread SET deleted_at=NULL WHERE id=? AND user_id=?",uuid(id),owner());
+        return Map.of("restored",true);
+    }
+    public List<Map<String,Object>> legacyHistory() { return legacyHistory(false); }
+    public List<Map<String,Object>> legacyHistory(boolean deleted) {
+        return db.queryForList("SELECT p.session_id AS \"sessionId\",p.status,p.started_at AS \"createdAt\",count(m.message_no) AS \"messageCount\" "
+            +"FROM practice_session p JOIN session_message m USING(session_id) LEFT JOIN agent_conversation a USING(session_id) "
+            +"LEFT JOIN agent_legacy_history_trash trash USING(session_id) "
+            +"WHERE p.user_id=? AND p.scene_type='FREE_CHAT' AND a.session_id IS NULL AND trash.session_id IS "+(deleted?"NOT NULL":"NULL")
+            +" GROUP BY p.session_id ORDER BY p.started_at DESC LIMIT 50",owner());
+    }
+    @Transactional
+    public Map<String,Object> changeLegacyTrash(String id,boolean deleted) {
+        var rows=db.queryForList("SELECT p.session_id FROM practice_session p LEFT JOIN agent_conversation a USING(session_id) "
+            +"WHERE p.session_id=? AND p.user_id=? AND p.scene_type='FREE_CHAT' AND a.session_id IS NULL FOR UPDATE OF p",id,owner());
+        if(rows.isEmpty())throw error("CONVERSATION_NOT_FOUND","对话不存在");
+        if(deleted) {
+            if(sessions.findById(id).isPresent())throw error("CONVERSATION_VOICE_ACTIVE","请先结束这段对话的语音，再删除记录");
+            db.update("INSERT INTO agent_legacy_history_trash(session_id) VALUES (?) ON CONFLICT DO NOTHING",id);
+        } else db.update("DELETE FROM agent_legacy_history_trash WHERE session_id=?",id);
+        return Map.of(deleted?"deleted":"restored",true);
+    }
+    private Map<String,Object> legacyDetail(String id) {
+        var rows=db.queryForList("SELECT p.* FROM practice_session p LEFT JOIN agent_conversation a USING(session_id) WHERE p.session_id=? AND p.user_id=? AND p.scene_type='FREE_CHAT' AND a.session_id IS NULL",id,owner());
+        if(rows.isEmpty())throw error("CONVERSATION_NOT_FOUND","对话不存在");
+        if(db.queryForObject("SELECT count(*) FROM agent_legacy_history_trash WHERE session_id=?",Integer.class,id)>0)
+            throw error("CONVERSATION_DELETED","此对话已移入回收站，请恢复后打开");
+        var result=new LinkedHashMap<String,Object>();result.put("sessionId",id);result.put("legacy",true);
+        result.put("config",Map.of("name","旧版语音对话","purpose","原始设置未保存","level",""));
+        result.put("channel","voice");result.put("status",rows.getFirst().get("status"));
+        result.put("messages",messages(id));result.put("learning",List.of());return result;
+    }
+
     private String source(String id,int messageNo) {
         owned(id,false);
         var rows=db.queryForList("SELECT content FROM session_message WHERE session_id=? AND message_no=?",id,messageNo);
@@ -226,7 +441,7 @@ public class AgentWorkspaceService {
         return Map.of("feedback",feedback);
     }
     public List<Map<String,Object>> attempts() {
-        return db.query("SELECT a.*,i.text,i.session_id FROM agent_training_attempt a JOIN agent_learning_item i ON i.id=a.item_id WHERE a.user_id=? ORDER BY a.created_at DESC LIMIT 200",
+        return db.query("SELECT a.*,i.text,i.session_id FROM agent_training_attempt a JOIN agent_learning_item i ON i.id=a.item_id WHERE a.user_id=? AND EXISTS (SELECT 1 FROM agent_chat_thread t WHERE t.id=a.thread_id AND t.deleted_at IS NULL) ORDER BY a.created_at DESC LIMIT 200",
             (r,n)->Map.of("id",r.getString("id"),"text",r.getString("text"),"answer",r.getString("answer"),"feedback",r.getString("feedback"),"sessionId",r.getString("session_id"),"createdAt",r.getString("created_at")),owner());
     }
 }
