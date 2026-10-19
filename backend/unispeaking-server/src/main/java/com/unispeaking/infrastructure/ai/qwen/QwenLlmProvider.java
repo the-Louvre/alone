@@ -34,6 +34,14 @@ import tools.jackson.databind.ObjectMapper;
 public class QwenLlmProvider extends LlmProvider {
 
 	private static final int DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+	private static final ThreadLocal<Boolean> CONVERSATION_ENDPOINT = new ThreadLocal<>();
+
+	/** Scoped to free conversation; other modules keep their configured workspace endpoint. */
+	public static <T> T withConversationEndpoint(java.util.function.Supplier<T> operation) {
+		Boolean previous = CONVERSATION_ENDPOINT.get();
+		try { CONVERSATION_ENDPOINT.set(true); return operation.get(); }
+		finally { if (previous == null) CONVERSATION_ENDPOINT.remove(); else CONVERSATION_ENDPOINT.set(previous); }
+	}
 
 	private final HttpClient httpClient;
 	private final ObjectMapper objectMapper;
@@ -231,6 +239,7 @@ public class QwenLlmProvider extends LlmProvider {
 	}
 
 	private URI resolveEndpoint() {
+		if (Boolean.TRUE.equals(CONVERSATION_ENDPOINT.get())) return URI.create("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions");
 		String effectiveWorkspaceId = ProviderCredentialOverride.currentOr("workspaceId", workspaceId);
 		if (!effectiveWorkspaceId.isBlank()) {
 			return buildEndpoint(effectiveWorkspaceId, region);
@@ -245,7 +254,7 @@ public class QwenLlmProvider extends LlmProvider {
 		if (requestEndpoint == null
 				|| !requestEndpoint.isAbsolute()
 				|| !"https".equalsIgnoreCase(requestEndpoint.getScheme())
-				|| !host.endsWith(".maas.aliyuncs.com")
+				|| !(host.endsWith(".maas.aliyuncs.com") || (Boolean.TRUE.equals(CONVERSATION_ENDPOINT.get()) && host.equals("dashscope.aliyuncs.com")))
 				|| requestEndpoint.getUserInfo() != null
 				|| requestEndpoint.getPort() != -1
 				|| !"/compatible-mode/v1/chat/completions".equals(requestEndpoint.getPath())

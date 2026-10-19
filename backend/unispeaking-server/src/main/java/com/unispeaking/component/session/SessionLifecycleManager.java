@@ -400,13 +400,7 @@ public class SessionLifecycleManager {
 	public void addMessage(String userId, String sessionId, Message message) {
 		validateMessage(message);
 		AbstractSceneSession session = requireOwnedSession(userId, sessionId);
-		if (session.getSceneType() == SceneType.FREE_CHAT) {
-			RealtimeFlowLog.info(
-					"session.addMessage ignoredForStorage sessionId={} owner={}",
-					session.getId(),
-					message.owner());
-			return;
-		}
+		synchronized (session) {
 		int messageNo = session.getMessages().size() + 1;
 		ConversationMessage stored = new ConversationMessage(
 				"msg_" + UUID.randomUUID(),
@@ -434,6 +428,7 @@ public class SessionLifecycleManager {
 				message.owner(),
 				RealtimeFlowLog.textSummary(message.content()),
 				message.audio() == null ? 0 : message.audio().length);
+		}
 	}
 
 	public SessionDetail getSession(String sessionId) {

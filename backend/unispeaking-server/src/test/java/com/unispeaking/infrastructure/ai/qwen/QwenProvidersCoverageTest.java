@@ -69,6 +69,18 @@ class QwenProvidersCoverageTest {
 	}
 
 	@Test
+	void freeConversationEndpointIsScopedAndRestoresWorkspaceEvenAfterFailure() {
+		var ok = new QueuedResponse(200, "{\"choices\":[{\"message\":{\"content\":\"hello\"}}]}");
+		RecordingHttpClient client = new RecordingHttpClient(ok, new QueuedResponse(400, "bad request"), ok);
+		QwenLlmProvider provider = llm(client, "key");
+		QwenLlmProvider.withConversationEndpoint(() -> provider.executeLlmTask("prompt", null));
+		assertEquals("dashscope.aliyuncs.com", client.requests.get(0).uri().getHost());
+		assertCode("QWEN_LLM_REQUEST_FAILED", () -> QwenLlmProvider.withConversationEndpoint(() -> provider.executeLlmTask("prompt", null)));
+		provider.executeLlmTask("prompt", null);
+		assertEquals(QWEN_ENDPOINT, client.requests.get(2).uri());
+	}
+
+	@Test
 	void qwenLlmSendsTextAndJsonFormatAndMeasuresProviderUsage() {
 		RecordingHttpClient client = new RecordingHttpClient(new QueuedResponse(
 				200,

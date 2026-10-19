@@ -234,14 +234,14 @@ class SessionLifecycleManagerCoverageTest {
 	}
 
 	@Test
-	void keepsFreeChatMessagesEphemeralAndRejectsUnboundSceneMessages() {
+	void persistsFreeChatMessagesAndRejectsUnboundSceneMessages() {
 		FreeChatSceneSession freeChat = new FreeChatSceneSession("free-ephemeral", ownerId.toString());
 		freeChat.setSceneType(SceneType.FREE_CHAT);
 		freeChat.setSceneId("free-scene");
 		sessions.save(freeChat);
 		lifecycle.addMessage(ownerId.toString(), freeChat.getId(), new Message(0, "hello", null));
-		assertTrue(freeChat.getMessages().isEmpty());
-		verifyNoInteractions(messages);
+		assertEquals(1, freeChat.getMessages().size());
+		verify(messages).append("free-scene", freeChat.getId(), 1, new Message(0, "hello", null));
 
 		CustomSceneSession unbound = new CustomSceneSession("scene-unbound", ownerId.toString());
 		unbound.setSceneType(SceneType.CUSTOM_SCENE);

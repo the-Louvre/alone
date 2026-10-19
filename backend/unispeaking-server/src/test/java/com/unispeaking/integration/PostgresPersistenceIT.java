@@ -128,6 +128,11 @@ class PostgresPersistenceIT {
 	void clearBusinessTables() {
 		jdbcTemplate.execute("""
 				TRUNCATE TABLE
+				    agent_training_attempt,
+				    agent_learning_item,
+				    agent_text_turn,
+				    agent_conversation,
+				    conversation_agent,
 				    quality_issue_history,
 				    quality_issue_events,
 				    quality_issues,
@@ -204,7 +209,7 @@ class PostgresPersistenceIT {
 				""",
 				String.class);
 
-		assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), migrationVersions);
+		assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"), migrationVersions);
 		assertEquals(
 				List.of("quality_issue_events", "quality_issue_history", "quality_issues"),
 				jdbcTemplate.queryForList(
@@ -229,7 +234,9 @@ class PostgresPersistenceIT {
 						String.class));
 		assertEquals(8, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ai_providers", Integer.class));
 		assertEquals(13, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ai_models", Integer.class));
-		assertEquals(9, jdbcTemplate.queryForObject(
+		// V11 promotes one canonical model per runtime capability; priorities are
+		// intentionally reset before the route is assigned.
+		assertEquals(5, jdbcTemplate.queryForObject(
 				"SELECT COUNT(*) FROM ai_models WHERE route_priority IS NOT NULL", Integer.class));
 		assertEquals(2, jdbcTemplate.queryForObject(
 				"SELECT COUNT(*) FROM ai_providers WHERE provider_id IN ('qiniu', 'qiniu-maas') AND NOT enabled",
@@ -796,7 +803,7 @@ class PostgresPersistenceIT {
 				"SELECT COUNT(*) FROM legacy_ci.user_sessions WHERE token_digest = 'legacy-session'",
 				Integer.class));
 		assertEquals(
-				List.of("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
+				List.of("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"),
 				jdbcTemplate.queryForList(
 						"""
 						SELECT version
