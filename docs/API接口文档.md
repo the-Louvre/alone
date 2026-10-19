@@ -208,6 +208,8 @@
 | `model` | string | 否 | 模型标识；省略时默认七牛 Plus，失败回退百炼 Flash |
 | `voice` | string | 否 | 音色标识；当前七牛 RTC 阶段统一使用 Tina |
 | `translationEnabled` | boolean | 否 | 是否启用翻译 |
+| `agentConfig` | `Config` | 否 | 新 Agent 语音对话的设置快照 |
+| `conversationId` | UUID string | 否 | 继续已有 Agent 逻辑对话；服务端读取已保存的设置和上下文，忽略客户端设置与音色覆盖 |
 
 `TranslateTextRequest`：`text` 必填，最长 4000。响应字段为 `sourceText`、`translatedText`、`targetLanguage`。
 
@@ -215,6 +217,33 @@ Realtime 默认路由为七牛 RTI `qwen3.5-omni-plus-realtime`，可回退错�
 `qwen3.5-omni-flash-realtime`。七牛长期 API Key 与 Session 短期媒体 token 均不会返回
 客户端；响应中的 `providerSessionId` 是可持久化的七牛 RTI Session ID。结束接口会同步
 完成本地业务会话，并尽最大努力调用供应商 Stop 释放并发额度。
+
+### 6.1 Agent 聊天工作区
+
+基础路径：`/api/agent-workspace`。所有接口要求登录，用户身份由服务端安全上下文读取；不能通过请求体指定记录所有者。
+
+| 方法 | 路径 | 请求 | 响应 `data` |
+| --- | --- | --- | --- |
+| GET | `/agents` | 无 | 当前用户保存的 Agent 列表 |
+| POST / PUT | `/agents` / `/agents/{id}` | `Config` | 已保存的 Agent，包含 `id`、`version`、`config`、`updatedAt` |
+| POST | `/agents/{id}/open` | 无 | `{agent, conversation}`；没有有效消息时 `conversation=null`，不会创建练习会话 |
+| POST | `/threads` | `{config: Config, requestId: UUID}` | 幂等创建的逻辑对话详情；尚不创建物理练习会话 |
+| GET | `/threads` | 可选 `agentId`、`offset=0`、`deleted=false` | 每页最多 50 条摘要，含 `threadId`、`agentId`、`config`、`messageCount`、`preview`、`createdAt`、`lastMessageAt`、`deletedAt` |
+| GET / POST | `/threads/{id}` / `/threads/{id}/open` | 无 | 对话详情；POST 同时记住 Agent 最近打开的对话 |
+| POST | `/threads/{id}/messages` | `{requestId: UUID, text: string}` | 追加消息后的对话详情；相同请求标识不会重复写入或调用模型 |
+| POST | `/threads/{id}/end` | 无 | 结束最新练习片段后的详情；逻辑对话仍可继续 |
+| DELETE | `/threads/{id}` | 无 | `{deleted: true}`，移入回收站，可重复调用 |
+| POST | `/threads/{id}/restore` | 无 | `{restored: true}`，恢复原始消息与设置 |
+| GET | `/legacy-conversations` | 可选 `deleted=false` | 无 Agent 关联的旧版语音记录，最多 50 条 |
+| DELETE | `/legacy-conversations/{sessionId}` | 无 | `{deleted: true}` |
+| POST | `/legacy-conversations/{sessionId}/restore` | 无 | `{restored: true}` |
+| POST | `/conversations/{sessionId}/transcripts` | `{eventId, owner, text}` | `{saved: true, sessionId}`；按事件标识去重 |
+
+逻辑对话详情包含 `threadId`、`agentId`、不可变 `config`、`segments`、`sessionId`、`channel`、`status`、`messages` 和 `learning`。消息使用 `(segmentId, messageNo)` 保留真实来源，允许在同一逻辑对话中接续文字和多个语音连接。`Config` 与字段限制见 `AgentModels.Config`；修改 Agent 保存版本后，仅新建对话使用新设置。
+
+`text` 为非空字符串，聊天消息最长 4000 字符；转写 `text` 最长 16000，`eventId` 最长 200，`owner` 为 `0`（Agent）或 `1`（用户）。活动语音会阻止同一对话的并行语音、文字写入和删除，返回 `CONVERSATION_VOICE_ACTIVE`。已删除对话不参与默认聊天和正常历史查询，也不能继续聊天；详情读取返回 `CONVERSATION_DELETED`，恢复后可打开。Agent 设置、收藏、练习记录及累计练习统计不随移入回收站删除。
+
+原有 `/conversations`、`/conversations/{sessionId}`、消息、结束及词句训练接口保留兼容。旧版物理会话链接可解析到所属逻辑对话；没有 Agent 元数据的旧会话保持独立，不猜测归属。完整的数据迁移与恢复说明见 [agent-chat-workspace.md](agent-chat-workspace.md)。
 
 ## 7. 自定义场景
 

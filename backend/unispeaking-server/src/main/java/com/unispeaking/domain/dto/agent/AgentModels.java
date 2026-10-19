@@ -18,6 +18,9 @@ public final class AgentModels {
     public record Generate(@NotBlank @Size(max=2000) String purpose,
         @Pattern(regexp="A1|A2|B1|B2|C1|C2") @NotNull String level) {}
     public record Start(@NotNull @Valid Config config) {}
+    public record ThreadStart(@NotNull @Valid Config config, @NotBlank String requestId) {}
+    public record Transcript(@NotBlank @Size(max=200) String eventId,
+        @Min(0) @Max(1) int owner, @NotBlank @Size(max=16000) String text) {}
     public record Turn(@NotBlank String requestId, @NotBlank @Size(max=4000) String text) {}
     public record Collect(@Min(1) int messageNo,
         @NotNull @Pattern(regexp="word|sentence") String kind,

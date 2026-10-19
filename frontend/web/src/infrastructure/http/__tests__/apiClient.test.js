@@ -32,7 +32,11 @@ async function expectAudioBlob(request) {
   const result = await request;
   expect(result.size).toBe(5);
   expect(Object.prototype.toString.call(result)).toBe("[object Blob]");
-  await expect(new Response(result).text()).resolves.toBe("audio");
+  // Node's Response and jsdom's Blob may belong to different realms.
+  const text = typeof result.text === "function" ? result.text() : new Promise((resolve, reject) => {
+    const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsText(result);
+  });
+  await expect(text).resolves.toBe("audio");
 }
 
 beforeEach(() => {

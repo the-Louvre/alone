@@ -724,7 +724,7 @@ describe("App", () => {
     mockApi.requestAuthenticated.mockResolvedValue({sessionId:"free-session-1",channel:"voice",status:"ACTIVE",config:{name:"旅行搭子",level:"B1"},messages:[{messageNo:1,owner:0,content:"What do you enjoy making?"}],learning:[]});
     await act(async () => client.options.onEvent({type:"local.connected",sessionId:"free-session-1"}));
     expect(await screen.findByText("What do you enjoy making?")).toBeInTheDocument();
-    await user.click(screen.getByRole("button",{name:"结束对话"}));
+    await user.click(screen.getByRole("button",{name:"结束语音"}));
     await waitFor(()=>expect(client.stop).toHaveBeenCalled());
   });
 

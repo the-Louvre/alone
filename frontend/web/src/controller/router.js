@@ -65,6 +65,8 @@ export const paths = {
   conversation: {
     root: "/conversation",
     session: (sessionId) => `/conversation/${encodeURIComponent(sessionId)}`,
+    agent: (id) => `/conversation/agents/${encodeURIComponent(id)}`,
+    thread: (id) => `/conversation/threads/${encodeURIComponent(id)}`,
   },
   scenes: {
     training: "/scenes/training",
@@ -339,6 +341,9 @@ export function resolveRoute(locationLike = window.location) {
 
   if (pathname.startsWith(`${paths.conversation.root}/`)) {
     const segments = pathname.split("/").filter(Boolean);
+    if (segments.length === 3 && ["agents", "threads"].includes(segments[1])) {
+      return appRoute("conversation", { conversationSessionId: `${segments[1] === "agents" ? "agent" : "thread"}:${safeDecode(segments[2])}` });
+    }
     if (segments.length === 2) {
       return appRoute("conversation", {
         conversationSessionId: safeDecode(segments[1]),

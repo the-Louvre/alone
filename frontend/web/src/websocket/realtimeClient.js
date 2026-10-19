@@ -726,6 +726,7 @@ export function createRealtimeClient({
   let providerSessionId = null;
   let providerSessionBound = false;
   let quotaDeadlineTimer = null;
+  let agentConversation = false;
 
   const emit = (event) => onEvent(event);
 
@@ -987,25 +988,24 @@ export function createRealtimeClient({
     const messageKey = providerMessageId ? `${owner}:${providerMessageId}` : null;
     if (messageKey && persistedMessageIds.has(messageKey)) return false;
     if (messageKey) persistedMessageIds.add(messageKey);
-    emit({
-      type: "local.transcript.final",
-      owner,
-      itemId: providerMessageId || eventId("transcript"),
-      text,
-    });
-    const operation = sendSessionFrame("message", {
-      owner,
-      content: text,
-      audio: null,
-    }).catch((error) => {
+    const itemId = `${owner}:${providerMessageId || eventId("transcript")}`;
+    const transcript = { sessionId, itemId, owner, text };
+    emit({ type: "local.transcript.final", ...transcript });
+    const operation = (agentConversation
+      ? requestAuthenticated(`/api/agent-workspace/conversations/${encodeURIComponent(sessionId)}/transcripts`, {
+        method: "POST", body: JSON.stringify({ eventId: itemId, owner, text }),
+      })
+      : sendSessionFrame("message", { owner, content: text, audio: null })
+    ).catch((error) => {
       if (messageKey) persistedMessageIds.delete(messageKey);
+      emit({ type: "local.transcript.failed", ...transcript });
       emit({ type: "local.backend_warning", message: error.message });
       throw error;
     });
     pendingOperations.add(operation);
     try {
       await operation;
-      emit({ type: "local.transcript.saved", sessionId });
+      emit({ type: "local.transcript.saved", ...transcript });
       return true;
     } finally {
       pendingOperations.delete(operation);
@@ -1312,7 +1312,7 @@ export function createRealtimeClient({
     if (requestResponse) requestTurnResponse(buildScenarioResponseRequest(state));
   }
 
-  async function postStart({ offerSdp, voice }) {
+  async function postStart({ offerSdp, voice, agentConfig, conversationId }) {
     const path = customSceneId
       ? `/api/custom-scenes/${encodeURIComponent(customSceneId)}/sessions`
       : ieltsSceneId
@@ -1322,10 +1322,14 @@ export function createRealtimeClient({
       : "/api/scene-sessions";
     return requestAuthenticated(path, {
       method: "POST",
-      body: JSON.stringify(buildRealtimeStartPayload(offerSdp, {
-        ielts: Boolean(ieltsSceneId),
-        voice,
-      })),
+      body: JSON.stringify({
+        ...buildRealtimeStartPayload(offerSdp, {
+          ielts: Boolean(ieltsSceneId),
+          voice,
+        }),
+        ...(freeChatSession && agentConfig ? { agentConfig } : {}),
+        ...(freeChatSession && conversationId ? { conversationId } : {}),
+      }),
     });
   }
 
@@ -1748,7 +1752,9 @@ export function createRealtimeClient({
     turnDetectionType = null,
     interruptResponse = null,
     agentConfig = null,
+    conversationId = null,
   } = {}, attempt) {
+    agentConversation = freeChatSession && Boolean(agentConfig || conversationId);
     const startedAt = Date.now();
     let stage = "peer_connection";
     let iceResult = null;
@@ -1828,6 +1834,7 @@ export function createRealtimeClient({
         offerSdp: peer.localDescription?.sdp || offer.sdp || "",
         voice,
         ...(freeChatSession && agentConfig ? { agentConfig } : {}),
+        ...(freeChatSession && conversationId ? { conversationId } : {}),
       });
       assertCurrentStart(attempt);
       sessionId = backend.sessionId;
