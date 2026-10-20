@@ -1,0 +1,102 @@
+/* User flows share the established free-chat palette and never affect other pages. */
+.freechat-v2 .aw-chat-layout.has-notes { display:flex; }
+.freechat-v2 .aw-chat-layout.has-notes>.aw-chat-learning.is-open {
+  display:block; position:static; inset:auto; flex:0 0 280px; width:280px; height:100%;
+  min-height:0; overflow-y:auto; box-shadow:none; border-left:1px solid var(--aw-line);
+}
+.freechat-v2 .aw-ux-drawer { height:100dvh; max-height:100dvh; width:min(480px,100vw); margin-left:auto; background:white; display:flex; flex-direction:column; min-height:0; padding:0; overflow:hidden; }
+.freechat-v2 .aw-ux-dialog-header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:20px 24px; min-height:74px; flex-shrink:0; border-bottom:1px solid var(--aw-line); }
+.freechat-v2 .aw-ux-dialog-header h2 { font-size:18px; line-height:1.4; margin:0; letter-spacing:-.3px; }
+.freechat-v2 .aw-ux-dialog-header>.aw-icon-button { margin-left:auto; }
+.freechat-v2 .aw-ux-dialog-body { flex:1; min-height:0; overflow:auto; padding:22px 24px; }
+.freechat-v2 .aw-ux-dialog-footer { display:flex; flex-shrink:0; justify-content:flex-end; gap:10px; padding:16px 24px; border-top:1px solid var(--aw-line); background:white; }
+.freechat-v2 .aw-ux-dialog-footer button { font-size:12px; min-height:42px; }
+.freechat-v2 .aw-dialog-caption { color:var(--aw-muted); font-size:12px; line-height:1.8; margin:0 0 16px; }
+.freechat-v2 .aw-setting-rule { padding:16px 24px 0; margin:0; flex-shrink:0; }
+.freechat-v2 .aw-current-voice { padding:6px 24px 0; margin:0; color:var(--aw-muted); font-size:11px; }
+.freechat-v2 .aw-settings-drawer>.aw-editor-layout { flex:1; min-height:0; overflow:auto; display:block; }
+.freechat-v2 .aw-settings-drawer .aw-editor { height:auto; overflow:visible; }
+.freechat-v2 .aw-settings-drawer>.aw-ux-dialog-footer { position:static; }
+.freechat-v2 .aw-notes-dialog { width:min(380px,100vw); }
+.freechat-v2 .aw-notes-dialog .aw-notes-end { font-size:12px; color:#a13f32; white-space:nowrap; margin-left:auto; }
+.freechat-v2 .aw-collection-dialog,.freechat-v2 .aw-practice-dialog { display:flex; flex-direction:column; min-height:0; width:min(580px,calc(100vw - 28px)); max-height:90dvh; padding:0; overflow:hidden; }
+.freechat-v2 .aw-sentence-choice { display:flex; align-items:flex-start; justify-content:flex-start; gap:11px; padding:13px 14px; border:1px solid var(--aw-line); border-radius:9px; margin-bottom:10px; font-size:14px; line-height:1.8; text-align:left; width:100%; color:var(--aw-ink); }
+.freechat-v2 .aw-sentence-choice input[type=checkbox] { width:16px; height:16px; min-width:16px; margin:5px 0 0; accent-color:var(--aw-accent); }
+.freechat-v2 .aw-sentence-choice span { min-width:0; overflow-wrap:anywhere; }
+.freechat-v2 .aw-sentence-choice small { display:block; font-size:11px; color:var(--aw-muted); margin-top:5px; }
+.freechat-v2 .aw-sentence-choice.is-saved { background:#f1f6f1; }
+.freechat-v2 .aw-collection-secondary { display:flex; gap:18px; padding-top:8px; }
+.freechat-v2 .aw-collection-secondary .aw-link { font-size:12px; }
+.freechat-v2 .aw-practice-dialog .aw-practice-target { font-size:19px; line-height:1.65; padding:14px; background:var(--aw-soft); border-radius:9px; margin:0 0 16px; }
+.freechat-v2 .aw-practice-dialog details { margin:14px 0; font-size:12px; }
+.freechat-v2 .aw-practice-dialog label { display:block; margin:18px 0 8px; font-size:13px; }
+.freechat-v2 .aw-practice-dialog textarea { min-height:130px; width:100%; font-size:15px; }
+.freechat-v2 .aw-notes-dialog .aw-learning-card { margin-bottom:12px; }
+.freechat-v2 .aw-notes-dialog .aw-learning-card button { font-size:12px; }
+.freechat-v2 .aw-new-state { display:inline-block; vertical-align:middle; margin-left:8px; padding:2px 5px; border-radius:4px; background:#edf4ee; color:var(--aw-accent); font-size:10px; font-weight:500; letter-spacing:0; }
+.freechat-v2 .aw-thread-actions .aw-header-new { gap:4px; font-size:12px; }
+.freechat-v2 .aw-thread-actions .aw-header-new svg { width:15px; height:15px; }
+.freechat-v2 .aw-chat-welcome>p { max-width:400px; color:var(--aw-muted); font-size:13px; line-height:1.8; margin:0; }
+.freechat-v2 .aw-chat-welcome>.aw-outline { margin-top:6px; font-size:12px; }
+.freechat-v2 .aw-settings-status { display:flex; justify-content:center; align-items:center; gap:12px; font-size:11px; padding:8px 20px; border-bottom:1px solid #edf1eb; background:#f8faf6; color:var(--aw-muted); }
+.freechat-v2 .aw-settings-status .aw-link { font-size:11px; color:var(--aw-accent); }
+.freechat-v2 .aw-new-messages { position:absolute; bottom:140px; align-self:center; z-index:5; padding:8px 13px; border:1px solid var(--aw-line); border-radius:20px; background:white; color:var(--aw-accent); box-shadow:0 3px 12px #23362f18; font-size:12px; }
+.freechat-v2 .aw-message { margin-bottom:18px; }
+.freechat-v2 .aw-message.from-user { margin-bottom:20px; }
+.freechat-v2 .aw-message>small { line-height:1.4; margin-bottom:6px; }
+.freechat-v2 .aw-message .aw-message-text { font-size:16px; line-height:1.75; }
+.freechat-v2 .aw-message-actions { margin-top:4px; min-height:28px; }
+.freechat-v2 .aw-message-actions .is-collected { color:var(--aw-accent); }
+.freechat-v2 .aw-message-actions button { min-height:28px; }
+.freechat-v2 .aw-history-open strong { white-space:normal; line-height:1.6; }
+.freechat-v2 .aw-history-open p { -webkit-line-clamp:2; }
+@media(max-width:640px) {
+  .freechat-v2 .aw-thread-header>.aw-agent-symbol { display:none; }
+  .freechat-v2 .aw-thread-actions .aw-header-new span { display:none; }
+  .freechat-v2 .aw-thread-actions .aw-header-new { width:35px; height:40px; padding:8px; }
+  .freechat-v2 .aw-thread-header .aw-thread-heading h2 { font-size:15px; }
+  .freechat-v2 .aw-new-state { display:block; width:max-content; margin:3px 0 0; font-size:9px; }
+  .freechat-v2 .aw-ux-dialog-header,.freechat-v2 .aw-ux-dialog-footer { padding:16px 18px; }
+  .freechat-v2 .aw-ux-dialog-body { padding:18px; }
+  .freechat-v2 .aw-ux-dialog-footer { flex-wrap:wrap; }
+  .freechat-v2 .aw-ux-dialog-footer button { min-height:44px; }
+  .freechat-v2 .aw-notes-dialog { width:100vw; }
+  .freechat-v2 .aw-sentence-choice { padding:12px; font-size:14px; }
+  .freechat-v2 .aw-message-actions button { min-height:40px; }
+}
+
+.freechat-v2 .aw-agent-entry>button:first-child{width:100%}.freechat-v2 .aw-agents .aw-agent-entry .aw-agent-draft-link{display:block;min-height:28px;width:auto;margin:2px 0 8px 52px;padding:3px 6px;font-size:10px;color:var(--aw-accent)}
+
+/* Reading preferences are scoped to this workspace, never to the Agent config. */
+/* Reserve the action row inside the message so its hover region has no gap. */
+.freechat-v2.aw-conversation-content .aw-message { position:relative; padding-bottom:30px; margin-bottom:4px; }
+.freechat-v2.aw-conversation-content .aw-message.from-user { width:100%; max-width:680px; margin-inline:auto; margin-bottom:4px; }
+.freechat-v2.aw-conversation-content .aw-message.from-user .aw-message-text { width:fit-content; max-width:min(86%,560px); margin-left:auto; }
+.freechat-v2.aw-conversation-content .aw-message.is-continuation>small { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.freechat-v2.aw-conversation-content .aw-chat .aw-message .aw-message-text,
+.freechat-v2.aw-conversation-content .aw-message .aw-message-translation,
+.freechat-v2.aw-conversation-content .aw-composer textarea { font-size:var(--aw-chat-font-size,18px); line-height:1.7; }
+.freechat-v2.aw-conversation-content .aw-message .aw-message-translation { margin-top:10px; }
+.freechat-v2.aw-conversation-content .aw-message-actions { position:absolute; inset:auto auto 0 0; margin:0; min-height:26px; pointer-events:none; }
+.freechat-v2.aw-conversation-content .from-user .aw-message-actions { left:auto; right:0; }
+.freechat-v2.aw-conversation-content .aw-message-actions button { min-height:26px; padding:4px 7px; }
+.freechat-v2.aw-conversation-content .aw-message:hover .aw-message-actions,
+.freechat-v2.aw-conversation-content .aw-message:focus-within .aw-message-actions,
+.freechat-v2.aw-conversation-content .aw-message:last-of-type .aw-message-actions { opacity:1; pointer-events:auto; }
+.freechat-v2.aw-conversation-content .aw-thread-header .aw-thread-context { display:flex; align-items:center; gap:8px; min-width:0; margin-top:5px; }
+.freechat-v2.aw-conversation-content .aw-context-purpose { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.freechat-v2.aw-conversation-content .aw-context-level { flex-shrink:0; padding:1px 5px; border:1px solid var(--aw-line); border-radius:4px; font-size:10px; line-height:1.4; color:var(--aw-muted); }
+.freechat-v2.aw-conversation-content .aw-reading-settings { margin-top:20px; border-top:1px solid var(--aw-line); }
+.freechat-v2.aw-conversation-content .aw-reading-settings .aw-setting { border-bottom:0; margin:0; }
+.freechat-v2.aw-conversation-content .aw-reading-caption { font-size:11px; line-height:1.7; color:var(--aw-muted); margin:0 0 6px; }
+@media(max-width:640px),(hover:none),(pointer:coarse) {
+  .freechat-v2.aw-conversation-content .aw-message-actions { position:static; margin:4px 0 0 -6px; opacity:1; pointer-events:auto; }
+  .freechat-v2.aw-conversation-content .aw-message-actions button { min-height:40px; }
+  .freechat-v2.aw-conversation-content .aw-message,.freechat-v2.aw-conversation-content .aw-message.from-user { padding-bottom:0; margin-bottom:16px; }
+  .freechat-v2.aw-conversation-content .aw-message.from-user .aw-message-text { max-width:95%; }
+}
+
+/* Keep settings scrollable even when the shared asset styles load first. */
+.freechat-v2.aw-conversation-content .aw-settings-drawer>.aw-editor-layout {
+  flex:1; min-height:0; overflow-y:auto; overflow-x:hidden;
+}

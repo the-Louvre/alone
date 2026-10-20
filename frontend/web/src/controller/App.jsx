@@ -979,8 +979,8 @@ function AppShell({ page, setPage, teacher, avatarUrl, navigationGuardActive = f
     if (targetPage && targetPage !== page) setPage(targetPage);
   };
   return (
-    <div className={cx("app-shell", sidebarOpen && "is-sidebar-open")}>
-      <aside className={cx("sidebar", sidebarOpen && "is-open")} onMouseEnter={() => setSidebarOpen(true)} onMouseLeave={() => setSidebarOpen(false)}>
+    <div className={cx("app-shell", page === "conversation" && "app-shell--freechat", sidebarOpen && "is-sidebar-open")}>
+      <aside hidden={page === "conversation"} className={cx("sidebar", sidebarOpen && "is-open")} onMouseEnter={() => setSidebarOpen(true)} onMouseLeave={() => setSidebarOpen(false)}>
         <Brand compact={!sidebarOpen} />
         <nav>{items.map(({ id, label, icon: Icon }) => <button key={id} className={cx("sidebar__item", activePage === id && "is-active")} onClick={() => navigateSidebar(id)} aria-label={label} title={label}><Icon weight={activePage === id ? "bold" : "regular"} /><span className="sidebar__label"><span>{label}</span></span></button>)}</nav>
         <button className={cx("sidebar__avatar", ["profile", "insights", "membership", "settings", "help", "about"].includes(page) && "is-active")} onClick={() => navigateSidebar("profile")}><img src={avatarUrl || teacher.image} alt="个人中心" /></button>
@@ -2580,7 +2580,7 @@ function formatAssetDate(value) {
 
 function Assets(props) {
   if (props.initialView === "detail") return <SceneAssets {...props} />;
-  return <AgentLearningAssets initialTab={new URLSearchParams(window.location.search).get("tab") || "existing"}
+  return <AgentLearningAssets userId={props.userId} initialTab={new URLSearchParams(window.location.search).get("tab") || "existing"}
     onTabChange={(tab) => props.onNavigate(`/assets?tab=${tab}`)}
     onOpenConversation={(id) => props.onNavigate(`/conversation/${id}`)}
     onUseScene={(scene) => {
@@ -3704,7 +3704,7 @@ export function App() {
   }
   let content;
   if (training) content = <Training sceneId={training.sceneId} sessionId={training.sessionId} sceneTitle={sceneTitle} sceneContent={generatedScene} teacher={teacher} speed={conversationSpeed} initialStep={training.initialStep} initialStage={training.stage} standaloneSpeak={training.standaloneSpeak} result={result} onExit={() => setMainPage(training.returnPage || "scenes")} onComplete={completeScenePractice} onBack={() => setMainPage(training.returnPage || "scenes")} onAssets={openCompletedAssetDetail} onStageChange={navigateSceneStage} />;
-  else if (page === "conversation") content = <AgentWorkspace key={user?.id || "local"} userId={user?.id} sessionId={conversationSessionId} routeSearch={conversationSearch} onNavigate={(path) => navigate(path, { authMode })} onActiveChange={setFreeConversationActive} onSessionEnded={(sessionId) => { recordCompletedPractice("free", sessionId); void refreshProfileOverview(); void synchronizeAchievements({ revealNotifications: true }); }} />;
+  else if (page === "conversation") content = <AgentWorkspace onPageNavigate={selectMainPage} key={user?.id || "local"} userId={user?.id} sessionId={conversationSessionId} routeSearch={conversationSearch} onNavigate={(path) => navigate(path, { authMode })} onActiveChange={setFreeConversationActive} onSessionEnded={(sessionId) => { recordCompletedPractice("free", sessionId); void refreshProfileOverview(); void synchronizeAchievements({ revealNotifications: true }); }} />;
   else if (page === "scenes") content = <Scenes teacher={teacher} onStartTraining={startTraining} onLocked={setPaywall} onIelts={selectIelts} onInterview={selectInterview} />;
   else if (page === "assets") content = <Assets userId={user?.id} onNavigate={(path) => navigate(path, { authMode })} sceneId={assetSceneId} initialView={assetView} initialRecordTitle={sceneTitle} onOpenRecord={openCompletedAssetDetail} onCloseRecord={() => navigate(paths.assets.root, { assetView: "home", assetSceneId: null, authMode })} onIelts={() => selectMainPage("ielts-assets")} onInterview={() => selectMainPage("interview-assets")} onPractice={(scene) => startTraining(scene, "speak", { standaloneSpeak: false, returnPage: "assets" })} />;
   else if (page === "ielts") content = <IeltsTrainingCenter route={ieltsRoute} onNavigate={navigateIelts} onExit={() => setMainPage("scenes")} onAssets={() => navigateIelts(paths.ielts.assets.root)} />;

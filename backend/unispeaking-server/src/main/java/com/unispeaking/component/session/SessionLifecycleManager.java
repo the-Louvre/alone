@@ -36,6 +36,10 @@ import org.springframework.scheduling.TaskScheduler;
 @Component
 public class SessionLifecycleManager {
 
+	private com.unispeaking.infrastructure.persistence.repository.session.AgentVoiceLeaseRepository agentVoiceLeases;
+	@Autowired(required=false)
+	public void setAgentVoiceLeases(com.unispeaking.infrastructure.persistence.repository.session.AgentVoiceLeaseRepository leases) { this.agentVoiceLeases=leases; }
+
 	private final ActiveSessionRegistry activeSessionRegistry;
 	private final SessionMessageRepository sessionMessageRepository;
 	private final PracticeSessionRepository practiceSessionRepository;
@@ -190,6 +194,7 @@ public class SessionLifecycleManager {
 							reservation.deadline());
 				}
 				activeSessionRegistry.save(session);
+				if (agentVoiceLeases != null) agentVoiceLeases.record(session);
 				if (reservation != null && taskScheduler != null) {
 					ScheduledFuture<?> task = taskScheduler.schedule(
 							() -> expireQuota(userId, sessionId),
@@ -293,6 +298,7 @@ public class SessionLifecycleManager {
 			}
 			activeSessionRegistry.save(session);
 			cancelQuotaDeadline(sessionId);
+			if (agentVoiceLeases != null) agentVoiceLeases.clear(sessionId);
 		}
 		if (realtimeSessionTerminator != null) {
 			realtimeSessionTerminator.stopBestEffort(

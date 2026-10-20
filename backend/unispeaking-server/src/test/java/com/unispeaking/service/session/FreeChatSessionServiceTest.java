@@ -28,6 +28,26 @@ import org.mockito.ArgumentCaptor;
 class FreeChatSessionServiceTest {
 
 	@Test
+	void continuingVoiceUsesTheStoredSnapshotAndCleansUpFailedConnections() {
+		var scenes=mock(FreeChatSceneService.class);
+		var lifecycle=mock(SessionLifecycleManager.class);
+		var coordinator=mock(RealtimeSessionCoordinator.class);
+		var workspace=mock(com.unispeaking.service.agent.AgentWorkspaceService.class);
+		var service=new FreeChatSessionService(scenes,lifecycle,coordinator);service.setWorkspace(workspace);
+		var config=new com.unispeaking.domain.dto.agent.AgentModels.Config(null,1,"托尼","理发","Original prompt","B1","Tina",1.0,"after");
+		when(workspace.conversationConfig("thread-one")).thenReturn(config);
+		when(workspace.conversationPrompt("thread-one")).thenReturn("Original prompt with saved history");
+		when(workspace.prepare(config)).thenReturn(new FreeChatSceneContext("user-one",new FreeChatSceneResult("scene-one","Original prompt")));
+		when(lifecycle.startSession(any(StartSessionCommand.class))).thenReturn(new StartSessionResponse("session-one","time"));
+		when(coordinator.connect(any(),any(),any(),any(Boolean.class),any(),any(),any(),any(),any(),any(),any(),any(),any())).thenThrow(new IllegalStateException("connection failed"));
+		var request=new StartFreeChatRequest("offer",ProviderType.QWEN,"model","Harvey",true,null,"thread-one");
+		org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,()->service.startSession(request));
+		verify(workspace).attachVoice("session-one",config,"Original prompt with saved history","thread-one");
+		verify(coordinator).connect(any(),any(),any(),any(Boolean.class),any(),any(),any(),eq("Original prompt with saved history"),eq("offer"),eq(ProviderType.QWEN),eq("model"),eq("Tina"),eq(true));
+		verify(lifecycle).terminateSceneSession(eq("user-one"),eq("session-one"),eq(com.unispeaking.domain.vo.session.SessionStatus.FAILED),any());
+	}
+
+	@Test
 	void preparesSceneStartsLifecycleAndConnectsRealtime() {
 		FreeChatSceneService scenes = mock(FreeChatSceneService.class);
 		SessionLifecycleManager lifecycle = mock(SessionLifecycleManager.class);

@@ -40,24 +40,29 @@ public class FreeChatSessionService {
 		this.sessionCoordinator = sessionCoordinator;
 	}
 	public StartSceneSessionResponse startSession(StartFreeChatRequest request) {
-		FreeChatSceneContext prepared = request.agentConfig() != null
-				? workspace.prepare(request.agentConfig())
+		var agentConfig = request.conversationId() != null && !request.conversationId().isBlank()
+				? workspace.conversationConfig(request.conversationId()) : request.agentConfig();
+		FreeChatSceneContext prepared = agentConfig != null
+				? workspace.prepare(agentConfig)
 				: sceneService.prepare(new FreeChatSceneRequest(null));
 		var generated = prepared.scene();
+		String prompt = request.conversationId() != null && !request.conversationId().isBlank()
+				? workspace.conversationPrompt(request.conversationId()) : generated.dialoguePrompt();
 		SceneGenerationResponse scene = new SceneGenerationResponse(
 				generated.sceneId(),
 				List.of(),
 				List.of(),
 				List.of(),
-				generated.dialoguePrompt());
+				prompt);
 		StartSessionResponse started = sessionLifecycle.startSession(
 				new StartSessionCommand(
 						prepared.userId(),
 						generated.sceneId(),
 						SceneType.FREE_CHAT,
 						"DIALOGUE",
-						generated.dialoguePrompt()));
-		if (request.agentConfig() != null) workspace.attach(started.sessionId(), request.agentConfig(), "voice", generated.dialoguePrompt());
+						prompt));
+		try {
+		if (agentConfig != null) workspace.attachVoice(started.sessionId(), agentConfig, prompt, request.conversationId());
 		return sessionCoordinator.connect(
 				scene,
 				"Free Chat",
@@ -66,12 +71,18 @@ public class FreeChatSessionService {
 				started,
 				SceneType.FREE_CHAT,
 				generated.sceneId(),
-				generated.dialoguePrompt(),
+				prompt,
 				request.offerSdp(),
 				request.provider(),
 				request.model(),
-				request.voice(),
+				agentConfig == null ? request.voice() : agentConfig.voice(),
 				request.translationEnabled());
+		} catch (RuntimeException error) {
+			try { sessionLifecycle.terminateSceneSession(prepared.userId(), started.sessionId(),
+				com.unispeaking.domain.vo.session.SessionStatus.FAILED, java.time.Instant.now()); }
+			catch (RuntimeException cleanup) { error.addSuppressed(cleanup); }
+			throw error;
+		}
 	}
 	public void addMessage(String sessionId, Message message) {
 		sessionLifecycle.addMessage(sessionId, message);

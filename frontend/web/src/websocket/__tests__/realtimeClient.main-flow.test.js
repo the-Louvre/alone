@@ -155,6 +155,20 @@ afterEach(() => {
 });
 
 describe("createRealtimeClient main transport flow", () => {
+  it("sends the Agent snapshot when starting a voice conversation", async () => {
+    const agentConfig = { name: "旅行搭子", purpose: "练习点餐", prompt: "Talk about ordering coffee.", level: "B1", voice: "Tina", speed: 1, correction: "after" };
+    const client = createRealtimeClient({ sceneType: "free-chat" });
+    try {
+      await client.start({ voice: "Tina", agentConfig, conversationId: "thread-one" });
+      const [, request] = mocks.requestAuthenticated.mock.calls.find(([path]) => path === "/api/scene-sessions");
+      expect(JSON.parse(request.body)).toMatchObject({ voice: "Tina", agentConfig, conversationId: "thread-one" });
+      await client.handleEvent({ type: "response.audio_transcript.done", item_id: "saved-one", transcript: "Welcome back." });
+      expect(mocks.requestAuthenticated).toHaveBeenCalledWith("/api/agent-workspace/conversations/local-session/transcripts", expect.objectContaining({ method: "POST", body: JSON.stringify({ eventId: "0:saved-one", owner: 0, text: "Welcome back." }) }));
+    } finally {
+      await client.stop({ notifyBackend: false, reason: "test_stop" });
+    }
+  });
+
   it("starts free chat over WebRTC and session WebSocket, handles provider events, and stops cleanly", async () => {
     const events = [];
     const remoteStream = { getTracks: () => [{ stop: vi.fn() }] };
