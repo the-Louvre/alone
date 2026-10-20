@@ -1,14 +1,14 @@
 :root {
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
-  color: #151515;
-  background: #fff;
+  font-family: "Noto Sans SC", "Microsoft YaHei UI", "PingFang SC", ui-sans-serif, system-ui, sans-serif;
+  color: #172029;
+  background: #f8fafb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ink: #151515;
-  --muted: #777773;
-  --line: #e7e7e3;
-  --soft: #f7f7f5;
-  --soft-2: #f1f1ee;
+  --ink: #172029;
+  --muted: #5d6972;
+  --line: #dce3e7;
+  --soft: #f8fafb;
+  --soft-2: #edf3f6;
   --danger: #a33b33;
 }
 
@@ -18,8 +18,8 @@
 .app-fatal-error h1, .app-fatal-error p { margin: 0; }
 .app-fatal-error p { max-width: 680px; color: #777773; }
 .app-fatal-error button { margin-top: 10px; padding: 12px 20px; border: 0; border-radius: 6px; background: #191918; color: #fff; cursor: pointer; }
-html { min-width: 0; background: #fff; }
-body { margin: 0; min-width: 0; min-height: 100vh; min-height: 100dvh; overflow-x: hidden; -webkit-font-smoothing: antialiased; background: #fff; }
+html { min-width: 0; background: #f8fafb; }
+body { margin: 0; min-width: 0; min-height: 100vh; min-height: 100dvh; overflow-x: hidden; -webkit-font-smoothing: antialiased; background: #f8fafb; }
 button, input, textarea { font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #252525; outline-offset: 2px; }
@@ -70,9 +70,10 @@ svg { display: block; }
 }
 
 .brand { display: inline-flex; align-items: center; gap: 12px; color: #000; }
-.brand__mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--ink); background: #fff; overflow: hidden; }
-.brand__mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.brand__wordmark { display: block; width: 150px; height: auto; object-fit: contain; }
+.brand__mark { display: grid; place-items: center; width: 42px; height: 42px; color: var(--ink); overflow: hidden; }
+.brand__mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.brand__wordmark { display: block; width: 150px; font-size: 21px; font-weight: 520; white-space: nowrap; }
+.brand__wordmark strong { font-weight: 790; }
 .brand--compact .brand__mark { width: 44px; height: 44px; border-radius: 13px; }
 
 .audio-toggle { width: 50px; height: 50px; position: relative; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; overflow: hidden; color: #fff; background: #272727; box-shadow: 2px 2px 10px rgba(0,0,0,.13); cursor: pointer; transition: background .3s, transform .18s; }
@@ -3910,3 +3911,71 @@ button.ielts-training-cta:not(:disabled) svg { color: #fff !important; }
 @media (max-width: 380px) {
   .auth-panel { padding-inline: 16px; }
 }
+
+/* Visual alignment across authentication, training, and specialist modules. */
+.auth-layout__aside { background: #1d3442; }
+.auth-layout__aside p { color: #c3d1d8; }
+.sidebar { background: #f3f7f9; }
+.sidebar__item { border-radius: 6px; color: #637987; }
+.sidebar__item:hover { color: #1d455a; background: #eaf1f4; }
+.sidebar__item.is-active { color: #1d455a; background: #e3eff4; }
+.sidebar__item:focus-visible { outline: 2px solid #416e84; outline-offset: 1px; }
+.training-page { background: #f8fafb; }
+.training-header { background: #fff; }
+.result-modal { border-radius: 8px; }
+
+.app-shell:has(.ielts-page),
+.app-shell:has(.ielts-intake),
+.app-shell:has(.ielts-call) {
+  --ielts-canvas: #f8fafb;
+  --ielts-paper: #fff;
+  --ielts-soft: #e8f0f6;
+  --ielts-soft-strong: #dbeaf1;
+  --ielts-border: #dce3e7;
+  --ielts-border-strong: #9eb9c7;
+  --ielts-purple: #416e84;
+  --ielts-purple-dark: #244b60;
+  --ielts-text: #172029;
+  --ielts-muted: #5d6972;
+  --ielts-shadow: 0 8px 24px rgb(29 69 90 / 8%);
+}
+.app-shell:has(.ielts-page) > .sidebar,
+.app-shell:has(.ielts-intake) > .sidebar,
+.app-shell:has(.ielts-call) > .sidebar { background: #f3f7f9; }
+.ielts-intake-progress > span:last-child { background: #dce3e7; }
+.ielts-intake .level-option { border-radius: 8px; box-shadow: var(--ielts-shadow); }
+.ielts-intake .level-option:hover { border-color: #9eb9c7; background: #fff; }
+.ielts-intake .level-option.is-selected { box-shadow: 0 8px 22px rgb(29 69 90 / 11%); }
+.ielts-intake .level-option__number { color: #416e84; }
+.ielts-training-cta::before,
+.ielts-training-cta:hover::before { background-color: #416e84; background-image: none; box-shadow: 0 6px 18px rgb(29 69 90 / 14%); }
+.ielts-training-cta:disabled::before { background: #dce3e7; box-shadow: none; }
+.ielts-training-cta:disabled span,
+.ielts-training-cta:disabled svg { color: #637987; }
+.ielts-score-dialog__overall,
+.ielts-mock-score { background: #244b60; border-radius: 8px; }
+.ielts-score-dialog__overall span,
+.ielts-score-dialog__overall small,
+.ielts-mock-score span,
+.ielts-mock-score p { color: #dbeaf1; }
+.ielts-topic-list > header { background: #e8f0f6; box-shadow: 0 1px 0 #dce3e7; }
+.ielts-goal-row .ielts-goal-icon, .ielts-part-number { color: #416e84; }
+.ielts-mock-feature { border-radius: 8px; box-shadow: var(--ielts-shadow); }
+.ielts-mock-feature__meta,
+.ielts-mock-setup-overview dl,
+.ielts-mock-setup-overview dl > div { border-color: #dce3e7; }
+.ielts-part-card, .ielts-topic-list > button { border-radius: 8px; box-shadow: var(--ielts-shadow); }
+.ielts-part-card:hover, .ielts-topic-list > button:hover { border-color: #9eb9c7; background: #fff; box-shadow: 0 12px 28px rgb(29 69 90 / 11%); }
+.ielts-part-card__copy small, .ielts-part-card__arrow { background: #e8f0f6; }
+.ielts-topic-list { border-radius: 8px; background: #edf3f6; }
+.ielts-topic-search { box-shadow: inset 0 0 0 1px #9eb9c7; }
+.ielts-topic-filter-indicator, .ielts-topic-pagination__pages button.is-active,
+.ielts-asset-tab-indicator { box-shadow: 0 5px 12px rgb(29 69 90 / 14%); }
+.ielts-examiner-card, .ielts-examiner-card.is-top:hover,
+.ielts-call-portrait, .ielts-call.call--subtitles .ielts-call-portrait,
+.ielts-dialog { box-shadow: var(--ielts-shadow); }
+.ielts-call-controls { background: rgb(248 250 251 / 96%); }
+.ielts-evaluation-waiting { background: rgb(248 250 251 / 94%); }
+.ielts-dialog-backdrop { background: rgb(220 227 231 / 74%); }
+.ielts-topic-list > button > span:first-child small { background: #e8f0f6; }
+.ielts-trend-chart-wrap { background: #fff; }

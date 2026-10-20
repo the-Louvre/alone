@@ -214,8 +214,8 @@ function prefetchPronunciationAudio(sceneId, items, limit = 2, voice = "") {
 function Brand({ compact = false }) {
   return (
     <div className={cx("brand", compact && "brand--compact")}>
-      <span className="brand__mark"><img src="/brand/unispeaking-mark-user.jpg" alt="" /></span>
-      {!compact && <img className="brand__wordmark" src="/brand/unispeaking-wordmark.png" alt="UniSpeaking" />}
+      <span className="brand__mark"><img src="/brand/unispeaking-mark-next.svg" alt="" /></span>
+      {!compact && <span className="brand__wordmark"><strong>Uni</strong>Speaking</span>}
     </div>
   );
 }

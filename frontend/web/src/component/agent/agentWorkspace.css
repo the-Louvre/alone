@@ -48,3 +48,39 @@
 @media(max-width:1100px){.aw-agent-menu{width:190px;flex-basis:190px;padding:25px 10px}.aw-agent-menu .aw-agents strong{max-width:110px}}
 @media(max-width:700px){.aw-agent-menu{width:52px;flex-basis:52px;padding:22px 5px}.aw-agent-menu .aw-nav-heading{margin:0 5px 14px}.aw-agent-menu .aw-nav-heading>span,.aw-agent-menu .aw-agents button>span:last-child,.aw-agent-menu .aw-nav-empty,.aw-agent-menu .aw-nav-caption,.aw-agent-tools span{display:none}.aw-agent-menu .aw-agents button{min-height:48px;justify-content:center;padding:4px}.aw-agent-menu .aw-agent-history{justify-content:center;padding:10px 4px;gap:0}.aw-agent-menu nav+nav{margin-top:10px}.aw-agent-tools{margin-top:18px}.aw-conversation-content .aw-breadcrumb{padding-right:0}.aw-conversation-content .aw-panel-close{margin-right:14px}.aw-conversation-content .aw-chat{height:100dvh}.aw-assets-surface>.aw-library{padding:24px 18px}.aw-workspace-panel .aw-assets-surface>.aw-library{padding-top:64px}.aw-conversation-content .aw-editor{padding:22px 14px}.aw-conversation-content .aw-purpose-actions{align-items:stretch;flex-direction:column}.aw-conversation-content .aw-edit-name input{font-size:21px}.aw-conversation-content .aw-editor-title p{font-size:12px}.aw-conversation-content .aw-symbol{display:none}.aw-conversation-content .aw-editor-footer>div{display:flex;flex-direction:column}.aw-conversation-content .aw-workspace-panel .aw-library{padding-inline:14px}}
 @media(prefers-reduced-motion:reduce){.agent-workspace *,.agent-workspace *:before,.agent-workspace *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Shared desktop palette for the existing Agent workspace and app shell. */
+.agent-workspace {
+  --aw-bg: #f8fafb;
+  --aw-ink: #172029;
+  --aw-muted: #5d6972;
+  --aw-line: #dce3e7;
+  --aw-accent: #416e84;
+  --aw-soft: #e8f0f6;
+  font-family: "Noto Sans SC", "Microsoft YaHei UI", "PingFang SC", ui-sans-serif, system-ui, sans-serif;
+}
+.aw-agent-menu { background: #f3f7f9; }
+.agent-workspace .aw-primary { background: #172029; border-color: #172029; border-radius: 6px; }
+.agent-workspace .aw-primary:hover:not(:disabled) { background: #244b60; }
+.agent-workspace .is-selected { color: #244b60; }
+.aw-agent-symbol { background: #edf3f6; color: #416e84; border-radius: 8px; }
+.is-selected .aw-agent-symbol, .aw-symbol { background: #deebf1; color: #244b60; border-radius: 8px; }
+.aw-preview { background: #f8fafb; }
+.aw-preview-empty, .aw-preview-empty h3 { color: #5d6972; }
+.aw-orbit { background: #e8f0f6; border-color: #dce3e7; border-radius: 8px; box-shadow: none; }
+.aw-orbit::after { border-color: #dce3e7; border-radius: 12px; }
+.aw-orbit svg { color: #416e84; }
+.aw-training-hint { background: #edf3f6!important; color: #416e84!important; border-radius: 8px; }
+.aw-text-start, .aw-purpose textarea, .aw-prompt textarea { border-radius: 8px!important; }
+.aw-chat-learning { background: #f8fafb; }
+.aw-message-text { background: #edf3f6; }
+.aw-message.from-user .aw-message-text { background: #e8f0f6; }
+.aw-composer { background: #fff; border-color: #dce3e7; border-radius: 8px; }
+.aw-composer:focus-within { border-color: #416e84; box-shadow: 0 0 0 3px rgb(65 110 132 / 12%); }
+.aw-send { background: #244b60!important; }
+.aw-voice-bar { background: #e8f0f6; color: #244b60; border-radius: 8px; }
+.aw-wave i { background: #416e84; }
+.aw-feedback, .aw-selection { background: #e8f0f6; border-color: #9eb9c7; }
+.aw-learning-card, .aw-scene-grid article, .aw-modal { border-radius: 8px; }
+.aw-scene-grid article:hover { border-color: #9eb9c7; box-shadow: 0 7px 25px rgb(29 69 90 / 7%); }
+.agent-workspace :is(button, input, textarea, select):focus-visible { outline: 2px solid #416e84; outline-offset: 2px; }

@@ -14,8 +14,9 @@ describe("LandingPage", () => {
     const onWeb = vi.fn();
     const onSpecialty = vi.fn();
     render(<LandingPage onStart={onStart} onLogin={onLogin} onWeb={onWeb} onSpecialty={onSpecialty} />);
-    expect(screen.getByRole("heading", { name: /越说/ })).toBeInTheDocument();
-    expect(screen.getByText("实时语音对话")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /口语陪练.*由你定义/ })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "产品演示步骤" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /AI 老师/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: /开始练习/ })[0]);
     fireEvent.click(screen.getByRole("button", { name: "登录" }));
     fireEvent.click(screen.getByRole("button", { name: "进入 Web" }));
@@ -44,14 +45,23 @@ describe("LandingPage", () => {
 
     const teachers = screen.getByLabelText("AI 老师列表").querySelectorAll("button");
     fireEvent.click(teachers[1]);
-    expect(screen.getByRole("heading", { level: 3, name: /James|Clara|David|Emily|Leo|Arthur/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /James.*英式口音/ })).toHaveAttribute("aria-pressed", "true");
     const faqButtons = screen.getAllByRole("button", { name: /吗？|什么？/ });
     expect(faqButtons[0]).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(faqButtons[0]);
     expect(faqButtons[0]).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(faqButtons[1]);
     expect(faqButtons[1]).toHaveAttribute("aria-expanded", "true");
-    fireEvent.click(screen.getAllByRole("button", { name: /免费开始/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /免费开始/ }));
     expect(onStart).toHaveBeenCalled();
+  });
+
+  it("lets the user inspect each product demo state without implying a live session", () => {
+    render(<LandingPage onStart={vi.fn()} onLogin={vi.fn()} onWeb={vi.fn()} onSpecialty={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /02 开始对话/ }));
+    expect(screen.getByText("正在聆听")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /03 查看反馈/ }));
+    expect(screen.getByText("识别字幕")).toBeInTheDocument();
+    expect(screen.getByText("表达建议")).toBeInTheDocument();
   });
 });
