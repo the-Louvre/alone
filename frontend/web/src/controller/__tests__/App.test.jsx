@@ -83,7 +83,7 @@ const mockAchievements = vi.hoisted(() => ({
 vi.mock("@phosphor-icons/react", () => {
   const Icon = () => null;
   return {
-    Copy: Icon, Suitcase: Icon, ChatCircleDots: Icon, ClockCounterClockwise: Icon, Stop: Icon, CircleNotch: Icon, Sparkle: Icon, UserCircle: Icon,
+    Scissors: Icon, GlobeHemisphereWest: Icon, DotsThree: Icon, MagnifyingGlass: Icon, Copy: Icon, Suitcase: Icon, ChatCircleDots: Icon, ClockCounterClockwise: Icon, Stop: Icon, CircleNotch: Icon, Sparkle: Icon, UserCircle: Icon,
     ArrowLeft: Icon,
     ArrowClockwise: Icon,
     ArrowRight: Icon,
@@ -307,7 +307,7 @@ describe("App", () => {
   beforeEach(() => {
     resetLocation("/");
     window.localStorage.clear();
-    window.sessionStorage.clear();
+    window.sessionStorage.clear(); localStorage.clear();
     vi.clearAllMocks();
     mockRealtime.clients.length = 0;
     mockApi.getAccessToken.mockReturnValue(null);
@@ -397,7 +397,7 @@ describe("App", () => {
     expect(mockAnalytics.setDistinctId).toHaveBeenCalledWith("user-1");
   });
 
-  it("keeps one original app shell across free chat, scenes, assets and profile", async () => {
+  it("uses the merged sidebar only for free chat and preserves the original shell on other pages", async () => {
     configureAuthenticatedDefaults(); resetLocation("/conversation");
     const user = userEvent.setup(); render(<App />);
     await screen.findByLabelText("这次想怎么聊");
@@ -409,12 +409,16 @@ describe("App", () => {
     expect(within(sidebar).queryByRole("button", { name: "新建 Agent" })).toBeNull();
     expect(within(chatWindow).getByRole("button", { name: "新建 Agent" })).toBeInTheDocument();
     expect(within(chatWindow).getByRole("navigation", { name: "Agent 选择" })).toBeInTheDocument();
-    await user.click(within(chatWindow).getByRole("button", { name: /日常聊友/ }));
+    expect(sidebar).toHaveAttribute("hidden");
+    await user.click(within(chatWindow).getByRole("button", { name: "发现更多对话伙伴" }));
+    await user.click(screen.getByRole("button", { name: /日常聊友/ }));
     expect(window.location.pathname).toBe("/conversation");
     expect(document.querySelector(".aw-conversation-content")).toBe(chatWindow);
-    expect(screen.getByLabelText("Agent 名称")).toHaveValue("日常聊友");
-    await user.click(within(sidebar).getByRole("button", { name: "场景广场" }));
+    expect(screen.getAllByRole("heading", { name: /日常聊友/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("Agent 名称")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "场景广场", exact: true }));
     await screen.findByRole("heading", { name: "场景广场" });
+    expect(sidebar).not.toHaveAttribute("hidden");
     expect(document.querySelector(".sidebar")).toBe(sidebar);
     expect(sidebar.className.replace(" is-open", "")).toBe(originalSidebarClass);
     expect(document.querySelector(".aw-agent-menu")).toBeNull();
@@ -724,7 +728,7 @@ describe("App", () => {
     mockApi.requestAuthenticated.mockResolvedValue({sessionId:"free-session-1",channel:"voice",status:"ACTIVE",config:{name:"旅行搭子",level:"B1"},messages:[{messageNo:1,owner:0,content:"What do you enjoy making?"}],learning:[]});
     await act(async () => client.options.onEvent({type:"local.connected",sessionId:"free-session-1"}));
     expect(await screen.findByText("What do you enjoy making?")).toBeInTheDocument();
-    await user.click(screen.getByRole("button",{name:"结束对话"}));
+    await user.click(screen.getByRole("button",{name:"结束语音"}));
     await waitFor(()=>expect(client.stop).toHaveBeenCalled());
   });
 

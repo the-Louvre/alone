@@ -47,7 +47,7 @@ async function unwrap(response) {
 }
 
 async function request(path, options = {}) {
-  const { expectedStatuses = [], skipAccessToken = false, ...fetchOptions } = options;
+  const { expectedStatuses = [], skipAccessToken = false, responseType = "json", ...fetchOptions } = options;
   let token = skipAccessToken ? null : getAccessToken();
   const formDataBody = typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
   const startedAt = performance.now();
@@ -98,7 +98,7 @@ async function request(path, options = {}) {
     }
   }
   try {
-    const result = await unwrap(response);
+    const result = responseType === "blob" && response.ok ? await response.blob() : await unwrap(response);
     recordTelemetry("api.request", {
       attributes: {
         api_path: apiPath,

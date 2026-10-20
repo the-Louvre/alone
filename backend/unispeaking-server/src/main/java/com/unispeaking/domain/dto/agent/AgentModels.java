@@ -15,12 +15,20 @@ public final class AgentModels {
         @Pattern(regexp="Katerina|Harvey|Raymond|Aiden|Tina|Dolce") @NotNull String voice,
         @DecimalMin("0.5") @DecimalMax("1.5") @NotNull Double speed,
         @Pattern(regexp="gentle|after|on-request") @NotNull String correction) {}
+    public record PresetSave(@NotNull @Valid Config config, @NotBlank String requestId) {}
     public record Generate(@NotBlank @Size(max=2000) String purpose,
         @Pattern(regexp="A1|A2|B1|B2|C1|C2") @NotNull String level) {}
     public record Start(@NotNull @Valid Config config) {}
+    public record ThreadStart(@NotNull @Valid Config config, @NotBlank String requestId) {}
+    public record Transcript(@NotBlank @Size(max=200) String eventId,
+        @Min(0) @Max(1) int owner, @NotBlank @Size(max=16000) String text) {}
     public record Turn(@NotBlank String requestId, @NotBlank @Size(max=4000) String text) {}
     public record Collect(@Min(1) int messageNo,
         @NotNull @Pattern(regexp="word|sentence") String kind,
-        @NotBlank @Size(max=2000) String text, @Size(max=2000) String meaning) {}
-    public record Attempt(@NotBlank String requestId, @NotBlank @Size(max=4000) String answer) {}
+        @NotBlank @Size(max=2000) String text, @Size(max=2000) String meaning, @Pattern(regexp="word|sentence|passage") String scope) {
+        public Collect(int messageNo,String kind,String text,String meaning) { this(messageNo,kind,text,meaning,null); }
+    }
+    public record Attempt(@NotBlank String requestId, @NotBlank @Size(max=4000) String answer, @Size(max=2000) String targetText) {
+        public Attempt(String requestId,String answer) { this(requestId,answer,null); }
+    }
 }

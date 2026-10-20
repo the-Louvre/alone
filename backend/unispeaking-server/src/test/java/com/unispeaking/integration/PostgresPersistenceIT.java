@@ -128,6 +128,10 @@ class PostgresPersistenceIT {
 	void clearBusinessTables() {
 		jdbcTemplate.execute("""
 				TRUNCATE TABLE
+				    agent_legacy_history_trash,
+				    agent_voice_message,
+				    agent_voice_lease,
+				    agent_chat_thread,
 				    agent_training_attempt,
 				    agent_learning_item,
 				    agent_text_turn,
@@ -209,7 +213,7 @@ class PostgresPersistenceIT {
 				""",
 				String.class);
 
-		assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"), migrationVersions);
+		assertEquals(List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"), migrationVersions);
 		assertEquals(
 				List.of("quality_issue_events", "quality_issue_history", "quality_issues"),
 				jdbcTemplate.queryForList(
@@ -803,7 +807,7 @@ class PostgresPersistenceIT {
 				"SELECT COUNT(*) FROM legacy_ci.user_sessions WHERE token_digest = 'legacy-session'",
 				Integer.class));
 		assertEquals(
-				List.of("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"),
+				List.of("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"),
 				jdbcTemplate.queryForList(
 						"""
 						SELECT version
