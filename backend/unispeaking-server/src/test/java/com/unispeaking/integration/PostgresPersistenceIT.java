@@ -128,6 +128,7 @@ class PostgresPersistenceIT {
 	void clearBusinessTables() {
 		jdbcTemplate.execute("""
 				TRUNCATE TABLE
+				    agent_legacy_history_trash,
 				    agent_voice_message,
 				    agent_voice_lease,
 				    agent_chat_thread,
