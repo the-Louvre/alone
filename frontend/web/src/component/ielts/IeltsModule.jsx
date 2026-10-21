@@ -21,6 +21,7 @@ import {
 } from "@phosphor-icons/react";
 import { NewtonsCradle } from "../common/NewtonsCradle.jsx";
 import { EvaluationLoader } from "../common/EvaluationLoader.jsx";
+import { AnimatedScore } from "../common/AnimatedScore.jsx";
 import {
   createIeltsSceneFlow,
   fetchAuthenticatedMedia,
@@ -52,16 +53,17 @@ const partMeta = {
 };
 
 const ieltsExaminers = [
-  { id: "daniel", voiceId: "Harvey", name: "Daniel", accent: "英式口音", personality: "严谨沉稳", image: "/examiner/daniel.png", offsetX: 0, intro: "节奏稳定，追问清晰，适合提前熟悉正式考场氛围。" },
-  { id: "marcus", voiceId: "Aiden", name: "Marcus", accent: "美式口音", personality: "清晰直接", image: "/examiner/marcus.png", offsetX: 5.2, intro: "表达清楚有力，会用自然追问帮助你快速进入回答状态。" },
-  { id: "margaret", voiceId: "Mione", name: "Margaret", accent: "英式口音", personality: "从容细致", image: "/examiner/margaret.png", offsetX: 2.2, intro: "语速从容、停顿自然，适合练习完整展开与细节组织。" },
-  { id: "sophia", voiceId: "Maia", name: "Sophia", accent: "澳式口音", personality: "自然友好", image: "/examiner/sophia.png", offsetX: 5.6, intro: "交流感自然但流程严格，适合降低紧张感并保持实战节奏。" },
+  { id: "daniel", voiceId: "Harvey", name: "Daniel", accent: "英式口音", personality: "严谨沉稳", image: "/examiner/editorial/daniel.png", offsetX: 0, intro: "节奏稳定，追问清晰，适合提前熟悉正式考场氛围。" },
+  { id: "marcus", voiceId: "Aiden", name: "Marcus", accent: "美式口音", personality: "清晰直接", image: "/examiner/editorial/marcus.png", offsetX: 0, intro: "表达清楚有力，会用自然追问帮助你快速进入回答状态。" },
+  { id: "margaret", voiceId: "Mione", name: "Margaret", accent: "英式口音", personality: "从容细致", image: "/examiner/editorial/margaret.png", offsetX: 0, intro: "语速从容、停顿自然，适合练习完整展开与细节组织。" },
+  { id: "sophia", voiceId: "Maia", name: "Sophia", accent: "澳式口音", personality: "自然友好", image: "/examiner/editorial/sophia.png", offsetX: 0, intro: "交流感自然但流程严格，适合降低紧张感并保持实战节奏。" },
 ];
 
 const IELTS_INTAKE_STORAGE_KEY = "unispeaking.ielts.intake.v1";
 const ieltsIntakeSteps = [
   {
     id: "target",
+    shortLabel: "目标分数",
     eyebrow: "YOUR GOAL",
     title: "这次备考，你希望达到多少分？",
     lead: "先定一个目标，我们会据此安排专项训练与模考节奏。",
@@ -74,6 +76,7 @@ const ieltsIntakeSteps = [
   },
   {
     id: "current",
+    shortLabel: "当前水平",
     eyebrow: "YOUR STARTING POINT",
     title: "你目前的口语，大约在哪个阶段？",
     lead: "不用精确估分，选择最接近的状态即可。",
@@ -103,10 +106,10 @@ export function TrainingCta({ children, onClick, className, disabled = false, ty
   return <button type={type} className={cx("expanding-cta", "teacher-gradient-cta", "ielts-training-cta", className)} onClick={onClick} disabled={disabled}><span>{children}</span><ArrowRight weight="bold" /></button>;
 }
 
-export function IeltsHeader({ title, subtitle, eyebrow, onBack, action, leadAction }) {
+export function IeltsHeader({ title, subtitle, onBack, action, leadAction }) {
   return (
     <header className="ielts-page-header">
-      <div>{onBack && <button className="ielts-back" onClick={onBack}><ArrowLeft />返回</button>}{leadAction}{eyebrow && <span className="ielts-header-eyebrow">{eyebrow}</span>}<h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
+      <div>{onBack && <button className="ielts-back" onClick={onBack}><ArrowLeft />返回</button>}{leadAction}<h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>
       {action}
     </header>
   );
@@ -139,9 +142,10 @@ function IeltsIntake({ onComplete, initialProfile, onCancel = null }) {
 
   return (
     <main className="setup-page ielts-intake">
-      <header className="ielts-intake-progress"><span>{stepIndex + 1} / {ieltsIntakeSteps.length}</span><span aria-hidden="true"><i style={{ width: `${((stepIndex + 1) / ieltsIntakeSteps.length) * 100}%` }} /></span></header>
+      <nav className="ielts-intake-steps" aria-label="目标设置进度">
+        {ieltsIntakeSteps.map((item, index) => <button key={item.id} type="button" className={cx(index === stepIndex && "is-current", index < stepIndex && "is-complete")} aria-current={index === stepIndex ? "step" : undefined} disabled={index > stepIndex || saving} onClick={() => setStepIndex(index)}><span className="ielts-intake-steps__marker">{index < stepIndex ? <Check weight="bold" /> : index + 1}</span><span>{item.shortLabel || item.title}</span></button>)}
+      </nav>
       <section className="setup-card">
-        <p className="eyebrow">{step.eyebrow}</p>
         <h1>{step.title}</h1>
         <p className="setup-lead">{step.lead}</p>
         <div className="level-options">
@@ -181,7 +185,6 @@ function IeltsHome({ onChoose, onAssets, onEditGoal, onBack, settings }) {
         onBack={onBack}
         eyebrow="IELTS SPEAKING"
         title="雅思口语"
-        subtitle="实战训练，持续复盘，看见进步"
         action={(
           <div className="ielts-home-actions">
             <button className="ielts-report-assets" onClick={onEditGoal}><NotePencil />调整目标</button>
@@ -440,18 +443,16 @@ function DeviceSetup({ part, topic, random, onBack, onStart }) {
   };
   return (
     <main className="ielts-page ielts-setup">
-      <IeltsHeader onBack={onBack} title={isMock ? "准备全真模考" : `准备 ${partMeta[part].label} 训练`} subtitle={random ? "本次题目将在正式开始后随机揭晓。" : `已选择话题：${topic?.title}`} />
+      <IeltsHeader onBack={onBack} title={isMock ? "准备全真模考" : `准备 ${partMeta[part].label} 训练`} subtitle={!isMock && !random ? `已选择话题：${topic?.title}` : undefined} />
       {isMock ? (
         <section className="ielts-mock-setup-overview">
           <div>
-            <span>FULL MOCK TEST</span>
-            <h2>完整模拟真实口试流程</h2>
-            <p>开始后，系统将随机分配考官与题目，并依次完成 Part 1、Part 2 和 Part 3。</p>
+            <h2>本次模考</h2>
           </div>
           <dl>
-            <div><dt>考试环节</dt><dd>Part 1–3</dd><small>完整口试流程</small></div>
-            <div><dt>预计用时</dt><dd>11–14 分钟</dd><small>开始后不可暂停</small></div>
-            <div><dt>考官与题目</dt><dd>系统随机分配</dd><small>开始后正式揭晓</small></div>
+            <div><dt>考试环节</dt><dd>Part 1–3</dd></div>
+            <div><dt>预计用时</dt><dd>11–14 分钟</dd></div>
+            <div><dt>考官与题目</dt><dd>系统随机分配</dd></div>
           </dl>
         </section>
       ) : (
@@ -1089,9 +1090,9 @@ function PracticeReport({ part, evaluation, onHome, onRetry, onAssets }) {
   return (
     <main className={cx("ielts-page", "ielts-report", !isMock && "ielts-report--single")}>
       <IeltsHeader onBack={onHome} title={reportTitle} subtitle={reportSubtitle} action={<button className="ielts-report-assets" onClick={onAssets}><BookOpenText />查看学习资产</button>} />
-      {isMock && <section className="ielts-mock-score"><span>本次预估</span><strong>{formatBand(evaluation.overallBandScore)}</strong><p>完整模考综合评分</p></section>}
+      {isMock && <section className="ielts-mock-score"><span>本次预估</span><strong><AnimatedScore value={evaluation.overallBandScore} decimals={1} /></strong><p>完整模考综合评分</p></section>}
       {isMock && <section className="ielts-report-summary"><div><span>本次结论</span><p>{evaluation.summary}</p>{strengths.length > 0 && <><span>表现优势</span><ul>{strengths.map((item) => <li key={item}>{item}</li>)}</ul></>}</div><div><span>优先改进</span>{improvements.length > 0 ? <ol>{improvements.map((item) => <li key={item}>{item}</li>)}</ol> : <p>本次评分没有返回额外改进项。</p>}</div></section>}
-      <section className="ielts-score-list"><h2>四项能力反馈</h2>{scoreRows.map((row) => <article key={row.label}><strong>{row.label}</strong><span className="ielts-score-value">{formatBand(row.score)}<small>/9</small></span><p>{row.note}</p></article>)}</section>
+      <section className="ielts-score-list"><h2>四项能力反馈</h2>{scoreRows.map((row) => <article key={row.label}><strong>{row.label}</strong><span className="ielts-score-value"><AnimatedScore value={row.score} decimals={1} /><small>/9</small></span><p>{row.note}</p></article>)}</section>
       {isMock && partEvaluations.length > 0 && <section className="ielts-part-evaluation-list"><h2>各 Part 四项评分</h2><div>{partEvaluations.map((item) => <article key={item.part}><span>{String(item.part).replace("PART_", "Part ")}</span><div className="ielts-part-evaluation-dimensions"><p><small>流利连贯</small><strong>{formatBand(item.fluencyCoherenceScore)}</strong></p><p><small>词汇</small><strong>{formatBand(item.lexicalResourceScore)}</strong></p><p><small>语法</small><strong>{formatBand(item.grammaticalRangeAccuracyScore)}</strong></p><p><small>发音</small><strong>{formatBand(item.pronunciationScore)}</strong></p></div></article>)}</div></section>}
       {expressions.length > 0 && <section className="ielts-recommended-expression-list"><h2>本次推荐表达</h2><ol>{expressions.map((item) => <li key={item}>{item}</li>)}</ol></section>}
     </main>

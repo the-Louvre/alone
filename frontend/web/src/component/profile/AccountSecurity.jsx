@@ -36,13 +36,11 @@ export function AccountSecurity({ email, onOpenPassword, onLogout }) {
     <main className="account-security-page">
       <header className="account-security-header">
         <div className="account-security-header__icon"><ShieldCheck weight="duotone" aria-hidden="true" /></div>
-        <p>ACCOUNT &amp; SECURITY</p>
         <h1>账号与安全</h1>
-        <span>管理登录凭据与当前登录状态</span>
       </header>
 
       <section className="account-security-section" aria-labelledby="account-login-title">
-        <header><p>LOGIN DETAILS</p><h2 id="account-login-title">登录信息</h2></header>
+        <header><h2 id="account-login-title">登录信息</h2></header>
         <div className="account-security-list">
           <article>
             <span className="account-security-row__icon"><EnvelopeSimple weight="duotone" aria-hidden="true" /></span>
@@ -58,7 +56,7 @@ export function AccountSecurity({ email, onOpenPassword, onLogout }) {
       </section>
 
       <section className="account-security-section" aria-labelledby="current-session-title">
-        <header><p>CURRENT SESSION</p><h2 id="current-session-title">当前登录</h2></header>
+        <header><h2 id="current-session-title">当前登录</h2></header>
         <div className="account-security-list">
           <article>
             <span className="account-security-row__icon"><Desktop weight="duotone" aria-hidden="true" /></span>

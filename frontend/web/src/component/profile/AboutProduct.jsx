@@ -47,7 +47,6 @@ export function AboutProduct({ onNavigate, onHelpNavigate }) {
           <img src="/brand/unispeaking-mark-user.jpg" alt="" />
           <img src="/brand/unispeaking-wordmark.png" alt="UniSpeaking" />
         </div>
-        <p>ABOUT UNISPEAKING</p>
         <h1>关于 UniSpeaking</h1>
         <span>专注真实表达的 AI 英语口语训练工具</span>
       </header>
@@ -58,7 +57,7 @@ export function AboutProduct({ onNavigate, onHelpNavigate }) {
       </div>
 
       <section className="about-product-section" aria-labelledby="product-information-title">
-        <header><p>PRODUCT INFORMATION</p><h2 id="product-information-title">产品信息</h2></header>
+        <header><h2 id="product-information-title">产品信息</h2></header>
         <dl className="about-product-facts">
           <div><dt>当前版本</dt><dd>{PRODUCT_INFORMATION.version}</dd></div>
           <div><dt>产品形态</dt><dd>Web 应用</dd></div>
@@ -70,7 +69,7 @@ export function AboutProduct({ onNavigate, onHelpNavigate }) {
       </section>
 
       <section className="about-product-section about-product-ai" aria-labelledby="product-ai-title">
-        <header><p>RESPONSIBLE AI</p><h2 id="product-ai-title">AI 使用说明</h2></header>
+        <header><h2 id="product-ai-title">AI 使用说明</h2></header>
         <div>
           <Robot weight="duotone" aria-hidden="true" />
           <p>对话回复、评分、纠错和训练推荐可能由人工智能生成，存在不准确或不完整的可能。相关结果仅用于语言学习参考，不应作为医疗、法律、就业或其他高风险决策依据。</p>
@@ -78,7 +77,7 @@ export function AboutProduct({ onNavigate, onHelpNavigate }) {
       </section>
 
       <section className="about-product-section" aria-labelledby="product-legal-title">
-        <header><p>TERMS & POLICIES</p><h2 id="product-legal-title">协议与说明</h2></header>
+        <header><h2 id="product-legal-title">协议与说明</h2></header>
         <nav className="about-product-links" aria-label="产品协议与说明">
           {legalLinks.map(({ title, description, href, icon: Icon }) => (
             <a key={href} href={href} onClick={(event) => followInternalLink(event, href, onNavigate)}>

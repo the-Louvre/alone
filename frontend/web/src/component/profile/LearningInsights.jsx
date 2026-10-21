@@ -252,7 +252,7 @@ export function LearningInsights({ onStartTraining }) {
   return (
     <div className="learning-insights-page">
       <header className="learning-insights-header">
-        <div><p>LEARNING INSIGHTS</p><h1>学习目标与洞察</h1><span>{formatWeekRange(goals?.weekStartsAt, goals?.weekEndsAt)}</span></div>
+        <div><h1>学习目标与洞察</h1><span>{formatWeekRange(goals?.weekStartsAt, goals?.weekEndsAt)}</span></div>
         {goals && <button type="button" onClick={() => setEditorOpen(true)}><Pencil aria-hidden="true" />调整目标</button>}
       </header>
 

@@ -410,7 +410,7 @@ function InterviewHome({ onNavigate, onBack }) {
         />
         <section className="interview-builder interview-module">
           <div className="scene-section-heading scene-section-heading--primary">
-            <div><p className="eyebrow">BUILD YOUR INTERVIEW</p><h2>准备面试材料</h2><p>先整理岗位描述与简历，AI 会提炼出本次面试的考察重点。</p></div>
+            <div><h2>准备面试材料</h2></div>
             <div className="interview-builder__badge"><ShieldCheck weight="fill" />材料经脱敏后使用</div>
           </div>
 
@@ -1270,8 +1270,8 @@ export function InterviewAssets({ route, onNavigate, onBack, onBackToAssets, onB
   );
 }
 
-function PageHeader({ eyebrow, title, subtitle, action }) {
-  return <header className="page-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{action}</header>;
+function PageHeader({ title, subtitle, action }) {
+  return <header className="page-header"><div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{action}</header>;
 }
 
 function ExpandingCta({ children, className, direction = "forward", disabled = false, onClick }) {

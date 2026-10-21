@@ -55,6 +55,7 @@ export const PAGE_PATHS = {
 
 export const paths = {
   root: "/",
+  pricing: "/pricing",
   auth: {
     login: "/login",
     signup: "/signup",
@@ -332,6 +333,7 @@ export function resolveRoute(locationLike = window.location) {
   if (preview) return preview;
 
   if (pathname === paths.root) return { ...baseRoute, flow: "splash", page: "conversation" };
+  if (pathname === paths.pricing) return { ...baseRoute, flow: "pricing", page: "conversation", publicAccess: true };
   if (pathname === paths.auth.login) return withSelectedVoice({ ...baseRoute, flow: "auth", page: "conversation", authMode: "login" });
   if (pathname === paths.auth.signup) return withSelectedVoice({ ...baseRoute, flow: "auth", page: "conversation", authMode: "signup" });
   if (pathname === paths.auth.level) return { ...baseRoute, flow: "level", page: "conversation" };

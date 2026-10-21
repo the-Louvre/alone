@@ -64,6 +64,20 @@ it("saves separate Agents and sends optimistic versions on edits", async () => {
   expect(api).toHaveBeenCalledWith("/agents/agent-one","PUT",expect.objectContaining({name:"我的搭子",version:1,id:"agent-one"}));
 });
 
+it("opens management for a saved Agent and prepares an unsaved copy", async () => {
+  const saved = { id: "agent-one", version: 2, config: { ...presets[0], name: "旅行练习" } };
+  api.mockImplementation(async (path) => path === "/agents" ? [saved] : []);
+  const user = userEvent.setup();
+  render(<AgentWorkspace onNavigate={vi.fn()} />);
+  await user.click(await screen.findByRole("button", { name: "管理 旅行练习" }));
+  expect(screen.getByRole("menuitem", { name: "编辑设置" })).toBeInTheDocument();
+  expect(screen.getByText(/删除需要服务端支持/)).toBeInTheDocument();
+  await user.click(screen.getByRole("menuitem", { name: "复制为新 Agent" }));
+  expect(screen.getByLabelText("Agent 名称")).toHaveValue("旅行练习 副本");
+  expect(screen.getByRole("button", { name: "保存为 Agent" })).toBeInTheDocument();
+  expect(api).not.toHaveBeenCalledWith(expect.stringMatching(/agents\/agent-one/), "DELETE", expect.anything());
+});
+
 it("retries a failed text turn with the same request id and keeps unsent input", async () => {
   let turn=0;const requests=[];
   api.mockImplementation(async (path,method,input) => {
@@ -115,15 +129,17 @@ it("does not introduce another app sidebar or an interview entry", () => {
 it("opens scene inspiration inside the current editor without navigating and preserves the draft", async () => {
   vi.mocked(getDailyPicks).mockResolvedValue({ picks: [{ id: "cafe", title: "咖啡店点餐", goal: "说明口味偏好", sceneInput: "在咖啡店说明口味偏好" }] });
   const navigate = vi.fn(); const first = render(<AgentWorkspace userId="owner" onNavigate={navigate} />);
-  fireEvent.change(screen.getByLabelText("对话难度"), { target: { value: "C1" } });
-  fireEvent.change(screen.getByLabelText("声音"), { target: { value: "Harvey" } });
+  fireEvent.click(screen.getByRole("combobox", { name: "对话难度" }));
+  fireEvent.click(screen.getByRole("option", { name: /C1/ }));
+  fireEvent.click(screen.getByRole("combobox", { name: "声音" }));
+  fireEvent.click(screen.getByRole("option", { name: /James/ }));
   fireEvent.click(screen.getByRole("button", { name: "从场景找灵感" }));
   expect(await screen.findByRole("button", { name: /咖啡店点餐/ })).toBeInTheDocument();
   expect(navigate).not.toHaveBeenCalled();
   first.unmount();
   render(<AgentWorkspace userId="owner" onNavigate={navigate} />);
-  expect(screen.getByLabelText("声音")).toHaveValue("Harvey");
-  expect(screen.getByLabelText("对话难度")).toHaveValue("C1");
+  expect(screen.getByRole("combobox", { name: "声音" })).toHaveTextContent("James");
+  expect(screen.getByRole("combobox", { name: "对话难度" })).toHaveTextContent("C1");
   expect(screen.getByLabelText("对话提示词")).toHaveValue(presets[0].prompt);
 });
 

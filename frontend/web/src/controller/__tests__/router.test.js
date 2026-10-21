@@ -21,6 +21,7 @@ describe("router", () => {
 
   it("resolves auth, splash, preview, and unknown routes", () => {
     expect(resolveRoute({ pathname: "/", search: "" })).toMatchObject({ flow: "splash", page: "conversation" });
+    expect(resolveRoute({ pathname: "/pricing", search: "" })).toMatchObject({ flow: "pricing", publicAccess: true });
     expect(resolveRoute({ pathname: "/login", search: "?voice=Tina" })).toMatchObject({ flow: "auth", authMode: "login", selectedVoice: "Tina" });
     expect(resolveRoute({ pathname: "/signup", search: "?voice=Harvey" })).toMatchObject({ flow: "auth", authMode: "signup", selectedVoice: "Harvey" });
     expect(resolveRoute({ pathname: "/", search: "?preview=training" })).toMatchObject({ flow: "app", page: "scenes", training: { initialStep: "learn" } });
