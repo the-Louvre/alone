@@ -97,6 +97,7 @@ import { HelpLayout } from "../component/help/HelpLayout.jsx";
 import { feedbackUrl } from "../component/help/ExternalFeedbackLink.jsx";
 import { markFeedbackStarted, recordFeedbackPractice } from "../component/help/feedbackInvitation.js";
 import { LandingPage } from "../component/landing/LandingPage.jsx";
+import { PricingPage } from "../component/landing/PricingPage.jsx";
 import { NewtonsCradle } from "../component/common/NewtonsCradle.jsx";
 import { Modal } from "../component/common/Modal.jsx";
 import { LearningInsights } from "../component/profile/LearningInsights.jsx";
@@ -991,8 +992,8 @@ function AppShell({ page, setPage, teacher, avatarUrl, navigationGuardActive = f
   );
 }
 
-function PageHeader({ eyebrow, title, subtitle, action }) {
-  return <header className="page-header"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{action}</header>;
+function PageHeader({ title, subtitle, action }) {
+  return <header className="page-header"><div><h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{action}</header>;
 }
 
 function LevelSelect({ value, onChange }) {
@@ -1595,11 +1596,11 @@ function Scenes({ onStartTraining, onIelts, onInterview, teacher }) {
   };
   return (
     <main className="page page--scenes">
-      <PageHeader title="场景广场" subtitle="把真实生活中的需求，变成高质量的口语练习。" />
+      <PageHeader title="场景广场" />
       <div className="scene-plaza-content section-block">
         <section className="scene-builder scene-builder--featured scene-module">
           <div className="scene-section-heading scene-section-heading--primary">
-            <div><p className="eyebrow">CREATE YOUR OWN</p><h2>创建专属场景</h2><p>用一句话描述你想练习的真实情境，AI 会为你整理角色、目标与表达任务。</p></div>
+            <div><h2>创建专属场景</h2></div>
           </div>
           <div className={cx("scene-input", prompt.trim() && "has-content")}>
             <textarea ref={promptRef} value={prompt} maxLength={200} readOnly={promptLocked} onChange={syncPrompt} onInput={syncPrompt} onCompositionEnd={syncPrompt} placeholder="你今天想练习什么？例如：第一次去健身房，咨询设施、开放时间和会员体验" />
@@ -1612,15 +1613,15 @@ function Scenes({ onStartTraining, onIelts, onInterview, teacher }) {
         </section>
 
         <section className="specialty-training scene-module">
-          <div className="scene-section-heading"><div><p className="eyebrow">SPECIALTY TRAINING</p><h2>专项训练</h2></div><p>围绕明确目标，进入完整的专项练习流程。</p></div>
+          <div className="scene-section-heading"><div><h2>专项训练</h2></div></div>
           <div className="specialty-training__grid">
             <button type="button" className="specialty-card specialty-card--ielts" onClick={onIelts}>
-              <span className="specialty-card__art"><img src="/specialty/ielts.png" alt="" /></span>
+              <span className="specialty-card__art" aria-hidden="true"><BookOpenText weight="regular" /></span>
               <span className="specialty-card__copy"><small>IELTS SPEAKING</small><strong>雅思口语</strong></span>
               <span className="specialty-card__action" aria-hidden="true"><ArrowRight weight="bold" /></span>
             </button>
             <button type="button" className="specialty-card specialty-card--interview" onClick={onInterview}>
-              <span className="specialty-card__art"><img src="/specialty/interview.png" alt="" /></span>
+              <span className="specialty-card__art" aria-hidden="true"><Briefcase weight="regular" /></span>
               <span className="specialty-card__copy"><small>ENGLISH INTERVIEW</small><strong>英文面试</strong></span>
               <span className="specialty-card__action" aria-hidden="true"><ArrowRight weight="bold" /></span>
             </button>
@@ -1629,7 +1630,7 @@ function Scenes({ onStartTraining, onIelts, onInterview, teacher }) {
 
         <section className="recommendations scene-module">
           <div className="scene-section-heading recommendation-heading">
-            <div><p className="eyebrow">DAILY PICKS</p><h2>每日推荐</h2></div>
+            <div><h2>每日推荐</h2></div>
             <div className="recommendation-heading__actions">
               <button
                 type="button"
@@ -2583,6 +2584,7 @@ function Assets(props) {
   return <AgentLearningAssets initialTab={new URLSearchParams(window.location.search).get("tab") || "existing"}
     onTabChange={(tab) => props.onNavigate(`/assets?tab=${tab}`)}
     onOpenConversation={(id) => props.onNavigate(`/conversation/${id}`)}
+    onStartConversation={() => props.onNavigate("/conversation")}
     onUseScene={(scene) => {
       const draft = readAgentDraft(props.userId);
       const config = { ...draft.config, purpose: `我想练习${scene.sceneInput || scene.title}。英语 ${draft.config.level}，请围绕这个情境自然交流。`, prompt: "" };
@@ -2591,7 +2593,7 @@ function Assets(props) {
     }} renderSceneAssets={() => <SceneAssets {...props} />} />;
 }
 
-function SceneAssets({ sceneId, onPractice, onIelts, onInterview, onOpenRecord, onCloseRecord, initialView = "home", initialRecordTitle }) {
+function SceneAssets({ sceneId, onPractice, onIelts, onInterview, onOpenRecord, onCloseRecord, onNavigate, initialView = "home", initialRecordTitle }) {
   const [records, setRecords] = useState([]);
   const [selectedId, setSelectedId] = useState(sceneId || "");
   const [detail, setDetail] = useState(null);
@@ -2720,6 +2722,12 @@ function SceneAssets({ sceneId, onPractice, onIelts, onInterview, onOpenRecord, 
           {!visibleRecords.length && <div className="asset-list__empty">{loading ? "正在加载学习资产" : selectedCategory !== "all" ? "没有匹配的学习资产" : "暂无场景学习资产"}</div>}
         </aside>
         <article className="asset-detail">
+          {!selected && !loading && !assetError && <div className="asset-detail__empty" role="status">
+            <BookOpenText aria-hidden="true" />
+            <h2>{selectedCategory === "all" ? "还没有场景训练记录" : "这个分类暂时没有记录"}</h2>
+            <p>{selectedCategory === "all" ? "创建场景并完成练习后，相关词句和对话会保存在这里。" : "可以切回全部分类，查看其他场景的训练记录。"}</p>
+            <Button variant="secondary" onClick={() => selectedCategory === "all" ? onNavigate("/scenes") : setSelectedCategory("all")}>{selectedCategory === "all" ? "创建练习场景" : "查看全部记录"}</Button>
+          </div>}
           {selected && <header>
             <div><p className="eyebrow">{selected.label || "其他"}</p><h2>{selected.title}</h2><p>{formatAssetDate(selectedDate)} · {selected.latestSessionId ? "已完成" : "待练习"}</p></div>
             <div className="asset-detail__actions"><AnimatedDeleteButton onClick={() => { setDeleteError(""); setDeleteOpen(true); }} /><ExpandingCta className="teacher-cta asset-open-button" onClick={() => onOpenRecord(selected.sceneId)}>打开当前学习资产</ExpandingCta></div>
@@ -2901,7 +2909,7 @@ function LearningCalendar({ calendar, onMonthChange }) {
   return (
     <article className="calendar-card">
       <header className="calendar-card__header">
-        <div><p className="eyebrow">LEARNING CALENDAR</p><h2>学习日历</h2></div>
+        <div><h2>学习日历</h2></div>
         <div className="calendar-month-switcher">
           <button type="button" aria-label="查看上一个月" onClick={() => onMonthChange(shiftMonth(-1))}><ChevronLeft /></button>
           <strong aria-live="polite">{label}</strong>
@@ -2974,7 +2982,7 @@ function AchievementSystem() {
   return (
     <section className="achievement-system">
       <header className="achievement-system__header">
-        <div><p className="eyebrow">ACHIEVEMENTS</p><h2>成就图鉴</h2><p>每一级进步，都由你真实的练习记录点亮。</p></div>
+        <div><h2>成就图鉴</h2></div>
         <div className="achievement-overall">
           <span><strong>{loading ? "—" : unlockedCount}</strong><small>/ {loading ? "—" : milestones.length} 已获得</small></span>
           <progress value={loading ? 0 : unlockedCount} max={Math.max(1, milestones.length)} />
@@ -3092,7 +3100,7 @@ function Overview({ calendar, statistics, onMonthChange, onAssets }) {
   const consecutiveLearningDays = statistics?.consecutiveLearningDays || 0;
   const days = statistics?.lastSevenDays || [];
   const maximumSeconds = Math.max(0, ...days.map((day) => day.practiceSeconds || 0));
-  return <><PageHeader eyebrow="PERSONAL OVERVIEW" title="你的学习空间" subtitle="把每一次开口变成看得见、可继续的成长记录。" action={calendar?.checkedInToday ? <span className="today-checkin"><CalendarCheck2 />今日已打卡</span> : null} /><div className="stat-grid"><article><Clock /><span><small>本周学习时长</small><strong>{weeklyMinutes} <em>分钟</em></strong></span></article><button type="button" className="stat-card-action" aria-label={`查看已保存的 ${trainingRecordCount} 项学习资产`} onClick={onAssets}><BookOpenText /><span><small>已保存学习资产</small><strong>{trainingRecordCount} <em>项</em></strong></span></button><article><Fire /><span><small>连续学习天数</small><strong>{consecutiveLearningDays} <em>天</em></strong></span></article></div><section className="overview-grid"><LearningCalendar calendar={calendar} onMonthChange={onMonthChange} /><article className="rhythm-card"><p className="eyebrow">LAST SEVEN DAYS</p><h2>练习节奏</h2><div className={cx("bars", !days.length && "is-empty")}>{days.length ? days.map((day) => { const seconds = day.practiceSeconds || 0; const minutes = Math.ceil(seconds / 60); const height = maximumSeconds ? Math.max(3, (seconds / maximumSeconds) * 100) : 3; const weekday = new Date(`${day.date}T00:00:00+08:00`).toLocaleDateString("zh-CN", { weekday: "short", timeZone: "Asia/Shanghai" }); return <span key={day.date} className={seconds ? "" : "is-zero"} style={{ height: `${height}%` }} aria-label={`${day.date}，练习 ${minutes} 分钟`} title={`${day.date} · ${minutes} 分钟`}><small>{minutes}m</small><em>{weekday}</em></span>; }) : <p>完成一次至少 30 秒的练习后，这里会显示你的节奏。</p>}</div></article></section><AchievementSystem /></>;
+  return <><PageHeader title="你的学习空间" action={calendar?.checkedInToday ? <span className="today-checkin"><CalendarCheck2 />今日已打卡</span> : null} /><div className="stat-grid"><article><Clock /><span><small>本周学习时长</small><strong>{weeklyMinutes} <em>分钟</em></strong></span></article><button type="button" className="stat-card-action" aria-label={`查看已保存的 ${trainingRecordCount} 项学习资产`} onClick={onAssets}><BookOpenText /><span><small>已保存学习资产</small><strong>{trainingRecordCount} <em>项</em></strong></span></button><article><Fire /><span><small>连续学习天数</small><strong>{consecutiveLearningDays} <em>天</em></strong></span></article></div><section className="overview-grid"><LearningCalendar calendar={calendar} onMonthChange={onMonthChange} /><article className="rhythm-card"><h2>练习节奏</h2><div className={cx("bars", !days.length && "is-empty")}>{days.length ? days.map((day) => { const seconds = day.practiceSeconds || 0; const minutes = Math.ceil(seconds / 60); const height = maximumSeconds ? Math.max(3, (seconds / maximumSeconds) * 100) : 3; const weekday = new Date(`${day.date}T00:00:00+08:00`).toLocaleDateString("zh-CN", { weekday: "short", timeZone: "Asia/Shanghai" }); return <span key={day.date} className={seconds ? "" : "is-zero"} style={{ height: `${height}%` }} aria-label={`${day.date}，练习 ${minutes} 分钟`} title={`${day.date} · ${minutes} 分钟`}><small>{minutes}m</small><em>{weekday}</em></span>; }) : <p>完成一次至少 30 秒的练习后，这里会显示你的节奏。</p>}</div></article></section></>;
 }
 
 function Membership() {
@@ -3131,7 +3139,7 @@ function Settings({ teacher, speed, level, onSettingsChange }) {
       setSyncPulse((current) => current + 1);
     }
   };
-  return <div className="assistant-settings-page"><PageHeader eyebrow="ASSISTANT SETTINGS" title="AI 助手设置" subtitle="只调整真正影响对话体验的选项。" action={<span key={syncPulse} className="sync-state"><CheckCircle />设置已同步</span>} /><section className="settings-list"><article><div><h2>对话语速</h2><p>选择更舒适的回应节奏。</p></div><SpeedSelector className="assistant-settings__speed" value={speed} onChange={(nextSpeed) => updateSettings({ speed: nextSpeed })} /></article><article><div><h2>英语水平</h2><p>新对话会按照该难度调整表达。</p></div><LevelSelect value={level} onChange={(nextLevel) => updateSettings({ level: nextLevel })} /></article><article className="teacher-settings"><div><h2>AI 老师</h2><p>每位老师有固定口音和陪练方式。</p></div><TeacherSelector className="assistant-settings__teachers" selectedId={teacher.id} onSelect={(nextTeacher) => updateSettings({ teacher: nextTeacher })} /></article></section></div>;
+  return <div className="assistant-settings-page"><PageHeader title="助手设置" action={<span key={syncPulse} className="sync-state"><CheckCircle />设置已同步</span>} /><section className="settings-list"><article><h2>对话语速</h2><SpeedSelector className="assistant-settings__speed" value={speed} onChange={(nextSpeed) => updateSettings({ speed: nextSpeed })} /></article><article><h2>英语水平</h2><LevelSelect value={level} onChange={(nextLevel) => updateSettings({ level: nextLevel })} /></article><article className="teacher-settings"><h2>AI 老师</h2><TeacherSelector className="assistant-settings__teachers" selectedId={teacher.id} onSelect={(nextTeacher) => updateSettings({ teacher: nextTeacher })} /></article></section></div>;
 }
 
 function Paywall({ title, onClose, onMembership }) {
@@ -3682,6 +3690,7 @@ export function App() {
 
   if (!authReady) return <main className="splash" aria-busy="true" />;
   if (flow === "splash") return <LandingPage onStart={openLandingStart} onLogin={() => goAuth("login")} onWeb={openWebApp} onSpecialty={openLandingSpecialty} />;
+  if (flow === "pricing") return <PricingPage onStart={openLandingStart} onLogin={() => user ? setMainPage("conversation") : goAuth("login")} onChoosePaid={() => user ? setMainPage("membership") : goAuth("signup")} signedIn={Boolean(user)} />;
   if (flow === "auth") return <Auth mode={authMode} onBack={goSplash} onSuccess={completeAuthentication} />;
   if (flow === "level") return <LevelSetup selected={level} onSelect={setLevel} onNext={saveLevelAndContinue} />;
   if (flow === "teacher") return <TeacherSetup selectedId={teacher.id} onSelect={(id) => setTeacher(teachers.find((item) => item.id === id))} onFinish={saveTeacherAndEnter} />;

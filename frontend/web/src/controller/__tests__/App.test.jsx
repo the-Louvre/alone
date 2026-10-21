@@ -583,7 +583,7 @@ describe("App", () => {
     });
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByRole("heading", { name: "AI 助手设置" });
+    await screen.findByRole("heading", { name: "助手设置" });
 
     await user.click(screen.getByRole("button", { name: "慢一些" }));
     await waitFor(() => expect(mockApi.updateUserPreference).toHaveBeenCalledWith({ preferredAiSpeechSpeed: "SLOWER" }));
@@ -715,7 +715,8 @@ describe("App", () => {
     configureAuthenticatedDefaults(); resetLocation("/conversation");
     const user = userEvent.setup(); render(<App />);
     await screen.findByLabelText("这次想怎么聊");
-    await user.selectOptions(screen.getByLabelText("声音"), "Harvey");
+    await user.click(screen.getByRole("combobox", { name: "声音" }));
+    await user.click(screen.getByRole("option", { name: /James/ }));
     await user.clear(screen.getByLabelText("对话提示词"));
     await user.type(screen.getByLabelText("对话提示词"), "Talk about pottery only.");
     await user.click(screen.getByRole("button", { name: "用这段提示词开聊" }));
@@ -1175,60 +1176,15 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "场景已准备好" })).not.toBeInTheDocument();
   });
 
-  it("covers achievement rendering, filtering, expansion, and empty/error recovery", async () => {
+  it("keeps the personal overview focused on learning activity", async () => {
     configureAuthenticatedDefaults();
     resetLocation("/profile");
-    mockApi.getAchievementOverview
-      .mockResolvedValueOnce({
-        series: [
-          {
-            seriesId: "conversation",
-            category: "练习",
-            title: "开口练习",
-            currentLevel: 1,
-            currentValue: 3,
-            nextLevel: 2,
-            nextThreshold: 5,
-            nextTitle: "持续表达",
-            unit: "次",
-            completed: false,
-            milestones: [
-              { achievementId: "m1", level: 1, title: "第一次开口", description: "完成第一次练习", threshold: 1, unlocked: true },
-              { achievementId: "m2", level: 2, title: "持续表达", description: "完成五次练习", threshold: 5, unlocked: false },
-              { achievementId: "m3", level: 3, title: "表达习惯", description: "完成十次练习", threshold: 10, unlocked: false },
-            ],
-          },
-          {
-            seriesId: "unknown-series",
-            category: "其他",
-            title: "隐藏成就",
-            currentLevel: 0,
-            currentValue: "bad-number",
-            unit: "分",
-            completed: true,
-            milestones: [],
-          },
-        ],
-      })
-      .mockRejectedValueOnce(new Error("成就服务不可用"))
-      .mockResolvedValueOnce({ series: [] });
-    const user = userEvent.setup();
     render(<App />);
     await screen.findByRole("heading", { name: "你的学习空间" });
-    expect(await screen.findByText("开口练习")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "查看开口练习全部等级" }));
-    expect(screen.getByRole("region", { name: "开口练习全部等级" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "收起开口练习等级" }));
-    await user.click(screen.getByRole("button", { name: /其他/ }));
-    expect(screen.getByText("隐藏成就")).toBeInTheDocument();
-
-    await user.click(screen.getAllByRole("button", { name: "个人中心" })[0]);
-    await user.click(within(screen.getByRole("navigation", { name: "个人中心导航" })).getByRole("button", { name: "会员权益" }));
-    await user.click(within(screen.getByRole("navigation", { name: "个人中心导航" })).getByRole("button", { name: "个人概览" }));
-    await waitFor(() => expect(mockApi.getAchievementOverview).toHaveBeenCalledTimes(2));
-    expect(await screen.findByRole("alert")).toHaveTextContent("成就服务不可用");
-    await user.click(screen.getByRole("button", { name: "重新加载" }));
-    expect(await screen.findByText("成就目录暂时为空")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "学习日历" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "练习节奏" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "成就图鉴" })).not.toBeInTheDocument();
+    expect(mockApi.getAchievementOverview).not.toHaveBeenCalled();
   });
 
   it("covers bootstrap failure, preference failures, and safe public about routes", async () => {
@@ -1288,6 +1244,16 @@ describe("App", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("资产详情暂时不可用");
     expect(screen.getByText("正在读取最近一次对话与评分。")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "打开当前学习资产" })).not.toBeInTheDocument();
+  });
+
+  it("returns from an empty scene asset to the existing scene builder", async () => {
+    configureAuthenticatedDefaults();
+    resetLocation("/assets?tab=existing");
+    render(<App />);
+
+    const createButton = await screen.findByRole("button", { name: "创建练习场景" });
+    await userEvent.click(createButton);
+    expect(window.location.pathname).toBe("/scenes");
   });
 
   it("redirects an unauthenticated protected route and preserves its return path", async () => {
